@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import figlet from 'figlet';
 import gradient from 'gradient-string';
+import open from 'open';
 
 export async function runSetup() {
   console.clear();
@@ -67,6 +68,20 @@ export async function runSetup() {
     });
     
     customModel = await prompt.run();
+  }
+
+  // Open browser to API key page
+  console.log(chalk.gray(`\nOpening browser to log in to ${provider === 'other' ? 'your provider' : provider}...`));
+  let keyUrl = '';
+  if (provider === 'google') keyUrl = 'https://aistudio.google.com/app/apikey';
+  if (provider === 'openai') keyUrl = 'https://platform.openai.com/api-keys';
+  if (provider === 'anthropic') keyUrl = 'https://console.anthropic.com/settings/keys';
+  
+  if (keyUrl) {
+    await open(keyUrl);
+    console.log(chalk.cyan(`Please create an API key, copy it, and return here.`));
+  } else if (provider === 'other') {
+    console.log(chalk.cyan(`Please locate your API key for ${customModel.split('/')[0]} and paste it below.`));
   }
 
   const { apiKey } = await enquirer.prompt<{ apiKey: string }>({
