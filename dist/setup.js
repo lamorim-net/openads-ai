@@ -3,9 +3,14 @@ import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import figlet from 'figlet';
+import gradient from 'gradient-string';
 export async function runSetup() {
     console.clear();
-    console.log(chalk.cyan.bold('Welcome to OpenAds 🎯'));
+    const asciiArt = figlet.textSync('OpenAds', { font: 'Standard' });
+    const openadsGradient = gradient(['#4facfe', '#00f2fe'])(asciiArt);
+    console.log(openadsGradient);
+    console.log(chalk.cyan.bold('\nWelcome to OpenAds 🎯'));
     console.log('Your AI co-pilot for digital marketing.');
     console.log(chalk.gray('─────────────────────────────────────────\n'));
     const configDir = path.join(os.homedir(), '.openads');
