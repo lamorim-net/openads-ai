@@ -6,9 +6,8 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import os from 'os';
 import chalk from 'chalk';
-import figlet from 'figlet';
-import gradient from 'gradient-string';
 import boxen from 'boxen';
+import { renderFilled } from 'oh-my-logo';
 import { runSetup } from './setup.js';
 import { runDoctor } from './doctor.js';
 
@@ -32,8 +31,11 @@ async function main() {
 
   // Splash Screen
   console.clear();
-  const asciiArt = figlet.textSync('OpenAds', { font: 'Standard' });
-  const openadsGradient = gradient(['#4facfe', '#00f2fe'])(asciiArt);
+  const openadsLogo = await renderFilled('OpenAds', {
+    palette: 'ocean',
+    font: 'chrome',
+    letterSpacing: 2
+  });
 
   // Read config to build dynamic status panel
   const configDir = path.join(os.homedir(), '.openads');
@@ -78,7 +80,7 @@ async function main() {
   `;
 
   const boxContent = `
-${openadsGradient}
+${openadsLogo}
 
   ${chalk.cyan('OpenAds v0.1.0')}  ${chalk.gray('AI for marketers')}
 ${chalk.gray('───────────────────────────────────────────────')}

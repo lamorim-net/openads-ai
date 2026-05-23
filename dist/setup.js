@@ -3,14 +3,16 @@ import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import figlet from 'figlet';
-import gradient from 'gradient-string';
+import { renderFilled } from 'oh-my-logo';
 import open from 'open';
 export async function runSetup() {
     console.clear();
-    const asciiArt = figlet.textSync('OpenAds', { font: 'Standard' });
-    const openadsGradient = gradient(['#4facfe', '#00f2fe'])(asciiArt);
-    console.log(openadsGradient);
+    const openadsLogo = await renderFilled('OpenAds', {
+        palette: 'ocean',
+        font: 'chrome',
+        letterSpacing: 2
+    });
+    console.log(openadsLogo);
     console.log(chalk.cyan.bold('\nWelcome to OpenAds 🎯'));
     console.log('Your AI co-pilot for digital marketing.');
     console.log(chalk.gray('─────────────────────────────────────────\n'));
