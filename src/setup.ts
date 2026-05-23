@@ -10,7 +10,7 @@ export async function runSetup() {
   console.clear();
   const openadsLogo = await renderFilled('OpenAds', {
     palette: 'ocean',
-    font: 'chrome',
+    font: 'block',
     letterSpacing: 2
   });
   console.log(openadsLogo);
