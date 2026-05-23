@@ -8,7 +8,16 @@
   },
   "type": "module",
   "piConfig": {
-    "configDir": ".openads"
+    "configDir": ".openads",
+    "mcps": {
+      "google-ads": {
+        "command": "uvx",
+        "args": ["adloop"]
+      },
+      "meta-ads": {
+        "url": "https://mcp.facebook.com/ads/sse"
+      }
+    }
   },
   "scripts": {
     "build": "tsc",

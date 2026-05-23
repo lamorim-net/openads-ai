@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { spawnSync } from 'child_process';
 
 export async function runDoctor() {
   console.log(chalk.cyan.bold('OpenAds Doctor 🩺\n'));
@@ -35,6 +36,14 @@ export async function runDoctor() {
   console.log(`\n${chalk.bold('Environment')}`);
   console.log(`  Node.js: ${process.version}`);
   console.log(`  OS: ${os.type()} ${os.release()}`);
+
+  const uvxCheck = spawnSync('uvx', ['--version']);
+  if (uvxCheck.status === 0) {
+    console.log(`  ${chalk.green('✓')} uvx: Installed (Required for Google Ads)`);
+  } else {
+    console.log(`  ${chalk.red('✗')} uvx: Not installed. Run 'curl -LsSf https://astral.sh/uv/install.sh | sh'`);
+    hasErrors = true;
+  }
 
   if (hasErrors) {
     console.log(`\n${chalk.red('Some checks failed. Please run `openads setup` to configure your environment.')}`);

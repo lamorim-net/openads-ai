@@ -89,9 +89,8 @@ export async function runSetup() {
   });
 
   if (connectGoogle) {
-    console.log(chalk.gray('\nOpening browser for Google sign-in...'));
-    // In reality this would trigger OAuth
-    console.log(chalk.green('✓ Connected — Google Ads access granted.\n'));
+    console.log(chalk.gray('\nSee docs/connect-google-ads.md for how to authenticate via `uvx adloop init`'));
+    console.log(chalk.green('✓ Google Ads module enabled.\n'));
   }
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
@@ -106,9 +105,8 @@ export async function runSetup() {
   });
 
   if (connectMeta) {
-    console.log(chalk.gray('\nOpening browser for Meta sign-in...'));
-    // In reality this would trigger OAuth
-    console.log(chalk.green('✓ Connected — Meta Ads access granted.\n'));
+    console.log(chalk.gray('\nSee docs/connect-meta.md for how to authenticate via `/mcp auth meta-ads`'));
+    console.log(chalk.green('✓ Meta Ads module enabled.\n'));
   }
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
