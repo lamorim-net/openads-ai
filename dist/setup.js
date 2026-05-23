@@ -81,7 +81,13 @@ export async function runSetup() {
     const { apiKey } = await enquirer.prompt({
         type: 'password',
         name: 'apiKey',
-        message: provider === 'other' ? `Paste your API key for ${customModel.split('/')[0]}:` : `Paste your ${provider} API key:`
+        message: provider === 'other' ? `Paste your API key for ${customModel.split('/')[0]}:` : `Paste your ${provider} API key:`,
+        validate: (value) => {
+            if (!value.trim()) {
+                return 'API key cannot be empty.';
+            }
+            return true;
+        }
     });
     console.log(chalk.green(`\n✓ Key valid — ${provider === 'other' ? customModel : provider} connected.\n`));
     console.log(chalk.gray('─────────────────────────────────────────\n'));
