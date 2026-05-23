@@ -1,3 +1,7 @@
+---
+name: product-marketing
+description: Core context about the business, ICP, and value proposition.
+---
 # Product Marketing Foundation
 
 ## When to Use This Skill

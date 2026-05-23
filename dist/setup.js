@@ -131,7 +131,7 @@ export async function runSetup() {
     // Map providers to their default model strings
     let finalModel = provider;
     if (provider === 'google')
-        finalModel = 'google/gemini-1.5-pro';
+        finalModel = 'google/gemini-1.5-pro-latest';
     if (provider === 'anthropic')
         finalModel = 'anthropic/claude-3-5-sonnet-20241022';
     if (provider === 'openai')
