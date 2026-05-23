@@ -51,12 +51,7 @@ async function main() {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       if (config.provider) {
         modelName = chalk.cyan(config.provider);
-        // If it contains a slash, it's a specific model like groq/llama3-70b-8192
-        if (config.provider.includes('/')) {
-          providerArg = `--model ${config.provider}`;
-        } else {
-          providerArg = `--provider ${config.provider}`;
-        }
+        providerArg = `--model ${config.provider}`;
       }
       if (config.apiKey) {
         apiKeyArg = `--api-key ${config.apiKey}`;
@@ -111,12 +106,12 @@ ${statusPanel}`;
   ];
 
   const env = {
-    ...process.env
+    ...process.env,
+    NODE_NO_WARNINGS: '1'
   };
 
   const child = spawn('npx', ['pi', ...piArgs], {
     stdio: 'inherit',
-    shell: true,
     env
   });
 

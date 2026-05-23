@@ -145,9 +145,16 @@ export async function runSetup() {
   console.log(chalk.green('\n✓ Got it. I\'ll remember this context across all your sessions.\n'));
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
+  // Map providers to their default model strings
+  let finalModel = provider;
+  if (provider === 'google') finalModel = 'google/gemini-1.5-pro';
+  if (provider === 'anthropic') finalModel = 'anthropic/claude-3-5-sonnet-20241022';
+  if (provider === 'openai') finalModel = 'openai/gpt-4o';
+  if (provider === 'other') finalModel = customModel;
+
   // Save basic config
   const config = {
-    provider: provider === 'other' ? customModel : provider,
+    provider: finalModel,
     apiKey,
     connectGoogle,
     connectMeta,
