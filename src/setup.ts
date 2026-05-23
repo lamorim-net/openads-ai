@@ -38,18 +38,41 @@ export async function runSetup() {
 
   let customModel = '';
   if (provider === 'other') {
-    const response = await enquirer.prompt<{ model: string }>({
-      type: 'input',
+    // Import AutoComplete dynamically to avoid typing issues with basic prompt
+    const { AutoComplete } = enquirer as any;
+    const prompt = new AutoComplete({
       name: 'model',
-      message: 'Enter the model name (e.g. together/meta-llama/Llama-3-70b-chat-hf):'
+      message: 'Search for a model (type to filter):',
+      limit: 10,
+      choices: [
+        'groq/llama3-70b-8192',
+        'groq/llama3-8b-8192',
+        'groq/mixtral-8x7b-32768',
+        'together/meta-llama/Llama-3-70b-chat-hf',
+        'together/meta-llama/Llama-3-8b-chat-hf',
+        'together/mistralai/Mixtral-8x22B-Instruct-v0.1',
+        'mistral/mistral-large-latest',
+        'mistral/open-mixtral-8x22b',
+        'openrouter/anthropic/claude-3.5-sonnet',
+        'openrouter/openai/gpt-4o',
+        'openrouter/meta-llama/llama-3-70b-instruct',
+        'anthropic/claude-3-opus-20240229',
+        'anthropic/claude-3-haiku-20240307',
+        'openai/gpt-4-turbo',
+        'openai/gpt-3.5-turbo',
+        'google/gemini-1.5-flash',
+        'ollama/llama3',
+        'ollama/mistral'
+      ]
     });
-    customModel = response.model;
+    
+    customModel = await prompt.run();
   }
 
   const { apiKey } = await enquirer.prompt<{ apiKey: string }>({
     type: 'password',
     name: 'apiKey',
-    message: provider === 'other' ? 'Paste your API key for this model:' : `Paste your ${provider} API key:`
+    message: provider === 'other' ? `Paste your API key for ${customModel.split('/')[0]}:` : `Paste your ${provider} API key:`
   });
 
   console.log(chalk.green(`\n✓ Key valid — ${provider === 'other' ? customModel : provider} connected.\n`));
