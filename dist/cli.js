@@ -72,8 +72,6 @@ async function main() {
   ${chalk.bold('Skills')}    product · ads · copy · autoresearch
   `;
     const boxContent = `
-${openadsLogo}
-
   ${chalk.cyan('OpenAds v0.1.0')}  ${chalk.gray('AI for marketers')}
 ${chalk.gray('───────────────────────────────────────────────')}
 ${statusPanel}`;
@@ -90,13 +88,16 @@ ${statusPanel}`;
         piArgsRaw.push(...providerArg.split(' '));
     if (apiKeyArg)
         piArgsRaw.push(...apiKeyArg.split(' '));
+    const skillsDir = path.join(pkgDir, 'skills');
+    const templatesDir = path.join(pkgDir, 'templates');
     const piArgs = [
         ...piArgsRaw,
+        '--skill', skillsDir,
+        '--prompt-template', templatesDir,
         ...args
     ];
     const env = {
-        ...process.env,
-        PI_PACKAGE_DIR: pkgDir
+        ...process.env
     };
     const child = spawn('npx', ['pi', ...piArgs], {
         stdio: 'inherit',
