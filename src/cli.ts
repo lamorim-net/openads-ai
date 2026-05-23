@@ -50,8 +50,12 @@ async function main() {
     try {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       if (config.provider) {
-        modelName = chalk.cyan(config.provider);
-        providerArg = `--model ${config.provider}`;
+        let cleanProvider = config.provider;
+        if (cleanProvider === 'google/gemini-1.5-pro') {
+          cleanProvider = 'google/gemini-1.5-pro-latest';
+        }
+        modelName = chalk.cyan(cleanProvider);
+        providerArg = `--model ${cleanProvider}`;
       }
       if (config.apiKey) {
         apiKeyArg = `--api-key ${config.apiKey}`;
