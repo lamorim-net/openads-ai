@@ -110,6 +110,35 @@ ${statusPanel}`;
     NODE_NO_WARNINGS: '1'
   };
 
+  // --- WHITE-LABEL PATCH ---
+  // 1. Force Pi to adopt OpenAds branding and directory
+  const piPkgPath = path.resolve(pkgDir, 'node_modules', '@earendil-works', 'pi-coding-agent', 'package.json');
+  if (fs.existsSync(piPkgPath)) {
+    try {
+      const piPkg = JSON.parse(fs.readFileSync(piPkgPath, 'utf8'));
+      if (!piPkg.piConfig || piPkg.piConfig.name !== 'openads') {
+        piPkg.piConfig = { name: 'openads', configDir: '.openads' };
+        fs.writeFileSync(piPkgPath, JSON.stringify(piPkg, null, 2));
+      }
+    } catch (e) {}
+  }
+
+  // 2. Silence Pi's default startup banner entirely
+  const agentDir = path.join(os.homedir(), '.openads', 'agent');
+  if (!fs.existsSync(agentDir)) {
+    fs.mkdirSync(agentDir, { recursive: true });
+  }
+  const settingsPath = path.join(agentDir, 'settings.json');
+  let settings: any = {};
+  if (fs.existsSync(settingsPath)) {
+    try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch (e) {}
+  }
+  if (!settings.quietStartup) {
+    settings.quietStartup = true;
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  }
+  // --- END WHITE-LABEL PATCH ---
+
   const child = spawn('npx', ['pi', ...piArgs], {
     stdio: 'inherit',
     env
