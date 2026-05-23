@@ -14,22 +14,32 @@ export async function runSetup() {
     }
     // Step 1: Model Selection
     console.log(chalk.cyan('Step 1/4: Choose your AI model\n'));
-    const { provider } = await enquirer.prompt({
+    let { provider } = await enquirer.prompt({
         type: 'select',
         name: 'provider',
         message: 'Which provider would you like to use?',
         choices: [
             { name: 'anthropic', message: 'Anthropic Claude (recommended)' },
             { name: 'openai', message: 'OpenAI GPT-4o' },
-            { name: 'google', message: 'Google Gemini' }
+            { name: 'google', message: 'Google Gemini' },
+            { name: 'other', message: 'Other (138+ models available via Pi)' }
         ]
     });
+    let customModel = '';
+    if (provider === 'other') {
+        const response = await enquirer.prompt({
+            type: 'input',
+            name: 'model',
+            message: 'Enter the model name (e.g. together/meta-llama/Llama-3-70b-chat-hf):'
+        });
+        customModel = response.model;
+    }
     const { apiKey } = await enquirer.prompt({
         type: 'password',
         name: 'apiKey',
-        message: `Paste your ${provider} API key:`
+        message: provider === 'other' ? 'Paste your API key for this model:' : `Paste your ${provider} API key:`
     });
-    console.log(chalk.green(`\n✓ Key valid — ${provider} connected.\n`));
+    console.log(chalk.green(`\n✓ Key valid — ${provider === 'other' ? customModel : provider} connected.\n`));
     console.log(chalk.gray('─────────────────────────────────────────\n'));
     // Step 2: Google Ads
     console.log(chalk.cyan('Step 2/4: Connect Google Ads (optional)\n'));
@@ -70,7 +80,7 @@ export async function runSetup() {
     console.log(chalk.gray('─────────────────────────────────────────\n'));
     // Save basic config
     const config = {
-        provider,
+        provider: provider === 'other' ? customModel : provider,
         apiKey,
         connectGoogle,
         connectMeta,

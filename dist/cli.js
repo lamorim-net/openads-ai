@@ -2,6 +2,8 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import os from 'os';
 import chalk from 'chalk';
 import figlet from 'figlet';
 import gradient from 'gradient-string';
@@ -26,10 +28,33 @@ async function main() {
     console.clear();
     const asciiArt = figlet.textSync('OpenAds', { font: 'Standard' });
     const openadsGradient = gradient(['#4facfe', '#00f2fe'])(asciiArt);
+    // Read config to build dynamic status panel
+    const configDir = path.join(os.homedir(), '.openads');
+    const configPath = path.join(configDir, 'openads.config.json');
+    let modelName = 'Not Configured';
+    let googleStatus = chalk.gray('✗ Not Connected');
+    let metaStatus = chalk.gray('✗ Not Connected');
+    if (fs.existsSync(configPath)) {
+        try {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if (config.provider) {
+                modelName = chalk.cyan(config.provider);
+            }
+            if (config.connectGoogle) {
+                googleStatus = chalk.green('✓ Connected');
+            }
+            if (config.connectMeta) {
+                metaStatus = chalk.green('✓ Connected');
+            }
+        }
+        catch (e) {
+            // ignore
+        }
+    }
     const statusPanel = `
-  ${chalk.bold('Model')}     Claude Sonnet 3.5
-  ${chalk.bold('Google')}    ✓ Configured
-  ${chalk.bold('Meta')}      ✓ Configured
+  ${chalk.bold('Model')}     ${modelName}
+  ${chalk.bold('Google')}    ${googleStatus}
+  ${chalk.bold('Meta')}      ${metaStatus}
   ${chalk.bold('Skills')}    product · ads · copy · autoresearch
   `;
     const boxContent = `
