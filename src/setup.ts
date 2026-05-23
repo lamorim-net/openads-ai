@@ -30,7 +30,7 @@ export async function runSetup() {
     message: 'Which provider would you like to use?',
     choices: [
       { name: 'anthropic', message: 'Anthropic Claude' },
-      { name: 'openai', message: 'OpenAI GPT-4o' },
+      { name: 'openai', message: 'OpenAI' },
       { name: 'google', message: 'Google Gemini' },
       { name: 'other', message: 'Other (138+ models available via Pi)' }
     ]
