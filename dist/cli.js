@@ -34,11 +34,23 @@ async function main() {
     let modelName = 'Not Configured';
     let googleStatus = chalk.gray('✗ Not Connected');
     let metaStatus = chalk.gray('✗ Not Connected');
+    let providerArg = '';
+    let apiKeyArg = '';
     if (fs.existsSync(configPath)) {
         try {
             const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
             if (config.provider) {
                 modelName = chalk.cyan(config.provider);
+                // If it contains a slash, it's a specific model like groq/llama3-70b-8192
+                if (config.provider.includes('/')) {
+                    providerArg = `--model ${config.provider}`;
+                }
+                else {
+                    providerArg = `--provider ${config.provider}`;
+                }
+            }
+            if (config.apiKey) {
+                apiKeyArg = `--api-key ${config.apiKey}`;
             }
             if (config.connectGoogle) {
                 googleStatus = chalk.green('✓ Connected');
@@ -69,21 +81,25 @@ ${statusPanel}`;
         borderStyle: 'double',
         borderColor: 'cyan',
     }));
-    console.log(`  ${chalk.gray('Type your question or /help for commands')}\n`);
-    // Launch Pi with our skills, templates, and config
-    const skillsDir = path.join(pkgDir, 'skills');
-    const templatesDir = path.join(pkgDir, 'templates');
-    const extensionsDir = path.join(pkgDir, 'extensions');
+    console.log('  Type your question or /help for commands\n');
+    // Build pi arguments dynamically from config
+    let piArgsRaw = [];
+    if (providerArg)
+        piArgsRaw.push(...providerArg.split(' '));
+    if (apiKeyArg)
+        piArgsRaw.push(...apiKeyArg.split(' '));
     const piArgs = [
-        '--package', pkgDir,
+        ...piArgsRaw,
         ...args
     ];
-    // We rely on Pi being installed either globally or locally
-    // For the wrapper, we spawn the local npx pi or global pi.
-    // Using npx ensures we use the project's dependency if available.
+    const env = {
+        ...process.env,
+        PI_PACKAGE_DIR: pkgDir
+    };
     const child = spawn('npx', ['pi', ...piArgs], {
         stdio: 'inherit',
-        shell: true
+        shell: true,
+        env
     });
     child.on('exit', (code) => {
         process.exit(code || 0);
