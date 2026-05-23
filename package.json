@@ -1,0 +1,33 @@
+{
+  "name": "openads-ai",
+  "version": "0.1.0",
+  "description": "Open source AI agent for digital marketers",
+  "main": "dist/cli.js",
+  "bin": {
+    "openads": "dist/cli.js"
+  },
+  "type": "module",
+  "piConfig": {
+    "configDir": ".openads"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "ts-node src/cli.ts"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.75.5",
+    "boxen": "^8.0.1",
+    "chalk": "^5.3.0",
+    "enquirer": "^2.4.1",
+    "figlet": "^1.8.0",
+    "gradient-string": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/figlet": "^1.5.8",
+    "@types/gradient-string": "^1.1.6",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}
