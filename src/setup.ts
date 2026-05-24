@@ -70,11 +70,15 @@ export async function runSetup() {
 
   if (provider === 'google') {
     const googleChoices = [
-      { name: 'google/gemini-2.5-flash', message: 'Gemini 2.5 Flash (Recommended — Fast, smart & cost-effective)' },
-      { name: 'google/gemini-2.5-pro', message: 'Gemini 2.5 Pro (Powerhouse — Best reasoning, huge context)' }
+      { name: 'google/gemini-3.5-flash', message: 'Gemini 3.5 Flash (Cutting Edge — High-speed flagship)' },
+      { name: 'google/gemini-3.5-pro', message: 'Gemini 3.5 Pro (Reasoning Frontier — Ultimate capabilities)' },
+      { name: 'google/gemini-2.5-flash', message: 'Gemini 2.5 Flash (Fast, smart & cost-effective)' },
+      { name: 'google/gemini-2.5-pro', message: 'Gemini 2.5 Pro (Best reasoning, huge context)' },
+      { name: 'google/gemini-1.5-flash', message: 'Gemini 1.5 Flash (Reliable legacy lightweight)' },
+      { name: 'google/gemini-1.5-pro', message: 'Gemini 1.5 Pro (Reliable legacy standard)' }
     ];
-    let initialIndex = 0;
-    if (existingConfig.provider && existingConfig.provider.includes('gemini-2.5-pro')) initialIndex = 1;
+    let initialIndex = googleChoices.findIndex(c => c.name === existingConfig.provider);
+    if (initialIndex === -1) initialIndex = 0;
 
     let { model } = await enquirer.prompt<{ model: string }>({
       type: 'select',
@@ -86,11 +90,13 @@ export async function runSetup() {
     selectedModel = model;
   } else if (provider === 'openai') {
     const openaiChoices = [
+      { name: 'openai/gpt-4o', message: 'GPT-4o (Omni — Dynamic reasoning & vision)' },
+      { name: 'openai/gpt-4o-mini', message: 'GPT-4o Mini (Omni Mini — Fast & affordable)' },
       { name: 'openai/gpt-4.1', message: 'GPT-4.1 (Recommended — Excellent instruction following)' },
       { name: 'openai/gpt-4.1-mini', message: 'GPT-4.1 Mini (Lightweight — Fast and budget-friendly)' }
     ];
-    let initialIndex = 0;
-    if (existingConfig.provider && existingConfig.provider.includes('gpt-4.1-mini')) initialIndex = 1;
+    let initialIndex = openaiChoices.findIndex(c => c.name === existingConfig.provider);
+    if (initialIndex === -1) initialIndex = 2;
 
     let { model } = await enquirer.prompt<{ model: string }>({
       type: 'select',
@@ -103,10 +109,13 @@ export async function runSetup() {
   } else if (provider === 'anthropic') {
     const anthropicChoices = [
       { name: 'anthropic/claude-sonnet-4', message: 'Claude Sonnet 4 (Recommended — Outstanding reasoning)' },
-      { name: 'anthropic/claude-haiku-4', message: 'Claude Haiku 4 (Lightweight — Fast & responsive)' }
+      { name: 'anthropic/claude-haiku-4', message: 'Claude Haiku 4 (Lightweight — Fast & responsive)' },
+      { name: 'anthropic/claude-3-5-sonnet', message: 'Claude 3.5 Sonnet (Highly popular and smart)' },
+      { name: 'anthropic/claude-3-5-haiku', message: 'Claude 3.5 Haiku (Fast & cost-efficient)' },
+      { name: 'anthropic/claude-3-opus', message: 'Claude 3 Opus (Deep creative reasoning)' }
     ];
-    let initialIndex = 0;
-    if (existingConfig.provider && existingConfig.provider.includes('claude-haiku')) initialIndex = 1;
+    let initialIndex = anthropicChoices.findIndex(c => c.name === existingConfig.provider);
+    if (initialIndex === -1) initialIndex = 0;
 
     let { model } = await enquirer.prompt<{ model: string }>({
       type: 'select',

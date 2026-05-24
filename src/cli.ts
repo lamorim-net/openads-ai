@@ -36,13 +36,7 @@ const CONFIG_DIR = path.join(os.homedir(), '.openads');
 const CONFIG_PATH = path.join(CONFIG_DIR, 'openads.config.json');
 
 const DEPRECATED_MODELS: Record<string, string> = {
-  'google/gemini-1.5-pro': 'google/gemini-2.5-flash',
-  'google/gemini-1.5-pro-latest': 'google/gemini-2.5-flash',
-  'google/gemini-3.5-flash': 'google/gemini-2.5-flash',
-  'openai/gpt-4o': 'openai/gpt-4.1',
-  'openai/gpt-4o-mini': 'openai/gpt-4.1-mini',
-  'anthropic/claude-3-5-sonnet-20241022': 'anthropic/claude-sonnet-4',
-  'anthropic/claude-3-5-haiku-20241022': 'anthropic/claude-haiku-4',
+  'google/gemini-1.0-pro': 'google/gemini-2.5-flash',
 };
 
 function loadConfig(): any {
