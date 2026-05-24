@@ -79,6 +79,17 @@ To ensure OpenAds never loses its way, we strictly adhere to these principles:
 
 ---
 
+## 🔒 Security & Privacy (Plain English)
+
+We know that handing an AI the keys to your advertising budget can be scary. Here is how we keep you safe:
+
+- **Everything Runs Locally:** OpenAds is not a cloud service. It runs entirely on your own computer. 
+- **No Backdoors:** There are no hidden servers watching what you do. We do not store your data, we do not read your ad performance, and we do not track your campaigns.
+- **Your Keys, Your Machine:** When you paste an API key or an Access Token into the setup wizard, it is saved directly to your computer's hard drive. It never touches our servers.
+- **Total Spending Control:** The AI can read your data freely, but it is strictly programmed to **never** create a campaign, modify a budget, or publish an ad without showing you the exact change first and forcing you to type `Y` to approve it.
+
+---
+
 ## 🚧 Work in Progress & Contributing
 
 OpenAds is currently in **active development (v0.1.0)**. It works beautifully, but there is so much more to build!
