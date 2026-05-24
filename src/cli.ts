@@ -63,7 +63,7 @@ async function main() {
       if (config.connectGoogle) {
         googleStatus = chalk.green('✓ Connected');
       }
-      if (config.connectMeta) {
+      if (config.metaToken) {
         metaStatus = chalk.green('✓ Connected');
       }
     } catch (e) {
@@ -149,6 +149,24 @@ ${statusPanel}`;
   if (!settings.quietStartup) {
     settings.quietStartup = true;
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  }
+
+  // Inject Meta MCP server if token is present
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (config.metaToken) {
+        settings.mcpServers = settings.mcpServers || {};
+        settings.mcpServers['meta-ads'] = {
+          command: 'npx',
+          args: ['-y', '@meta/mcp-server'],
+          env: {
+            META_ACCESS_TOKEN: config.metaToken
+          }
+        };
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      }
+    } catch (e) {}
   }
   // --- END WHITE-LABEL PATCH ---
 

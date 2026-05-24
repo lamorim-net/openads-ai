@@ -158,15 +158,23 @@ export async function runSetup() {
   console.log(chalk.cyan('Step 3/4: Connect Meta Ads (optional)\n'));
   console.log('OpenAds can read your Meta campaigns, creatives, and audience performance.\n');
 
+  let metaToken = '';
   const { connectMeta } = await enquirer.prompt<{ connectMeta: boolean }>({
     type: 'confirm',
     name: 'connectMeta',
     message: 'Connect Meta Ads?',
-    initial: existingConfig.connectMeta !== undefined ? existingConfig.connectMeta : false
+    initial: existingConfig.metaToken ? true : false
   });
 
   if (connectMeta) {
-    console.log(chalk.gray('\nSee docs/connect-meta.md for how to authenticate via `/mcp auth meta-ads`'));
+    const metaAnswers = await enquirer.prompt<{ metaToken: string }>({
+      type: 'password',
+      name: 'metaToken',
+      message: 'Paste your Meta System User Access Token:',
+      initial: existingConfig.metaToken || '',
+      validate: (value) => value.trim() ? true : 'Token cannot be empty.'
+    });
+    metaToken = metaAnswers.metaToken;
     console.log(chalk.green('✓ Meta Ads module enabled.\n'));
   }
   console.log(chalk.gray('─────────────────────────────────────────\n'));
@@ -198,7 +206,7 @@ export async function runSetup() {
     apiKey,
     localBaseUrl,
     connectGoogle,
-    connectMeta,
+    metaToken,
     productContext
   };
 
