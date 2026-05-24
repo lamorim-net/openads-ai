@@ -197,10 +197,12 @@ export async function runSetup() {
         if (metaAction === 'open') {
             console.log(chalk.gray(`\nOpening browser to https://business.facebook.com/settings/system-users...`));
             await open('https://business.facebook.com/settings/system-users');
-            console.log(chalk.cyan('Instructions:'));
-            console.log(chalk.gray('1. Create or select a System User'));
-            console.log(chalk.gray('2. Assign your Ad Accounts to the user'));
-            console.log(chalk.gray('3. Click "Generate New Token" (Check ads_read and ads_management)\n'));
+            console.log(chalk.cyan('Instructions to get your token:'));
+            console.log(chalk.gray('1. In the browser, click "Add" to create a new System User (Role: Employee).'));
+            console.log(chalk.gray('2. Click "Add Assets", select your Ad Accounts, and grant "Manage Campaigns" permission.'));
+            console.log(chalk.gray('3. Click the "Generate New Token" button.'));
+            console.log(chalk.gray('4. Check the boxes for "ads_read" and "ads_management" permissions.'));
+            console.log(chalk.gray('5. Click Generate, copy the long token string, and paste it below.\n'));
         }
         const metaAnswers = await enquirer.prompt({
             type: 'password',
