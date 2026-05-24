@@ -118,6 +118,44 @@ Here are some real examples — just type what you need:
 
 ---
 
+## 🧠 Memory — Gets Smarter Every Session
+
+OpenAds remembers what it learns about your business. After each conversation, the AI appends key insights to a plain markdown file at `~/.openads/context/my-business.md`:
+
+- Your best-performing campaigns and creative angles
+- Audience segments and buying triggers
+- Budget constraints and seasonal patterns
+- Competitor insights and positioning gaps
+
+You can open and edit this file anytime — it's your data, not a black box. The longer you use OpenAds, the better its advice gets.
+
+---
+
+## ⏰ Scheduled Automations
+
+Set up automated campaign checks that run in the background — no server required.
+
+```bash
+openads schedule
+```
+
+| Preset | Frequency |
+|---|---|
+| 📊 Daily campaign health check | Every day at 8 AM |
+| 💸 Budget pacing alert | Every 6 hours |
+| 📉 Performance drop alert | Twice daily (9 AM & 5 PM) |
+| 📋 Weekly performance report | Every Monday at 9 AM |
+| ⏰ Custom (describe in plain English) | You choose |
+
+Reports are saved to `~/.openads/reports/`. Manage your schedules:
+
+```bash
+openads schedule list     # See active schedules
+openads schedule remove   # Remove a schedule
+```
+
+Uses your OS scheduler (macOS `launchd` / Linux `crontab`) — works even when your terminal is closed.
+
 ## 🔒 Security & Privacy
 
 - **Runs 100% locally.** OpenAds is not a cloud service. Nothing leaves your machine except the API calls you authorize.
@@ -146,9 +184,12 @@ This verifies your config file, API keys, platform connections (live token check
 - [x] Interactive setup wizard with live token verification
 - [x] 12 pre-built skills: Ads, CRO, Copywriting, Analytics, Email, Video, Research, Strategy
 - [x] Autonomous research loops
+- [x] Published to npm (`npm install -g openads-ai`)
+- [x] Memory system — AI learns about your business over time
+- [x] Scheduled automations — daily health checks, budget alerts, weekly reports
+- [ ] Telegram bot gateway — talk to your ads from your phone
 - [ ] LinkedIn Ads integration
 - [ ] Pinterest Ads integration
-- [ ] Publish to npm registry
 
 ---
 

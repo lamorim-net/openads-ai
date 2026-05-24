@@ -11,6 +11,7 @@ import gradient from 'gradient-string';
 import ora from 'ora';
 import { runSetup } from './setup.js';
 import { runDoctor } from './doctor.js';
+import { runScheduleManager, runScheduledTask } from './schedule.js';
 import enquirer from 'enquirer';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,9 +53,11 @@ function resolveModel(provider: string): string {
   return DEPRECATED_MODELS[provider] || provider;
 }
 
-// ─── Product Context Injection ──────────────────────────────────────
-// Writes the user's product context as a skill file so the agent always
-// knows what the user sells, who their customer is, etc.
+// ─── Product Context & Memory ───────────────────────────────────────
+// The business context file grows over time. The agent appends learnings
+// (audience insights, campaign results, winning creative angles, etc.)
+// after each session. We only create the initial file if it doesn't exist
+// so accumulated knowledge is never overwritten.
 
 function injectProductContext(config: any): string | null {
   if (!config?.productContext) return null;
@@ -65,7 +68,10 @@ function injectProductContext(config: any): string | null {
   }
 
   const contextPath = path.join(contextDir, 'my-business.md');
-  const content = `---
+
+  // Only create the initial file — never overwrite accumulated learnings
+  if (!fs.existsSync(contextPath)) {
+    const content = `---
 name: my-business
 description: The user's business context — always read this first.
 ---
@@ -73,11 +79,14 @@ description: The user's business context — always read this first.
 
 ${config.productContext}
 
-Use this context to personalize all recommendations, ad copy, and strategy outputs.
-Always reference this when applying any marketing skill.
-`;
+## Learnings
 
-  fs.writeFileSync(contextPath, content);
+_The AI will automatically add insights here as it learns about your business._
+_You can also edit this file manually at: ${contextPath}_
+`;
+    fs.writeFileSync(contextPath, content);
+  }
+
   return contextDir;
 }
 
@@ -85,6 +94,8 @@ Always reference this when applying any marketing skill.
 // Makes the agent behave as "OpenAds" instead of generic Pi.
 
 function buildSystemPrompt(config: any): string {
+  const contextPath = path.join(CONFIG_DIR, 'context', 'my-business.md');
+
   const parts = [
     'You are OpenAds, an AI marketing assistant built for digital marketers.',
     'You specialize in Google Ads, Meta Ads, copywriting, analytics, CRO, and go-to-market strategy.',
@@ -92,6 +103,17 @@ function buildSystemPrompt(config: any): string {
     'Address the user as a marketing professional.',
     'When writing ad copy or recommendations, always reference the user\'s product context first.',
     'For any write operation (creating campaigns, changing budgets), always preview the change and ask for explicit confirmation before executing.',
+    '',
+    '## Memory',
+    '',
+    `Your business context file is at: ${contextPath}`,
+    'This file contains everything you have learned about the user\'s business across sessions.',
+    'At the START of every conversation, read this file to recall past context.',
+    'At the END of a conversation (or when you learn something significant), APPEND new insights to the "## Learnings" section of that file.',
+    'Things worth remembering: product details, audience segments, campaign performance benchmarks, winning ad angles, competitor insights, budget constraints, seasonal patterns, and any preferences the user expresses.',
+    'Format each learning as a bullet point with a date, e.g.: "- (2026-05-24) Best-performing Meta creative uses customer testimonial videos."',
+    'Never overwrite existing learnings — only append new ones.',
+    'If the learnings section grows beyond 50 items, summarize the oldest 25 into a "## Summary" section at the top and remove the individual bullets.',
   ];
 
   if (config?.productContext) {
@@ -221,6 +243,16 @@ async function main() {
     return;
   }
 
+  if (args[0] === 'schedule') {
+    await runScheduleManager(args[1]);
+    return;
+  }
+
+  if (args[0] === 'run-schedule') {
+    await runScheduledTask(args[1]);
+    return;
+  }
+
   // ─── First-Run Detection ────────────────────────────────────────
   const config = loadConfig();
 
@@ -278,6 +310,7 @@ async function main() {
         { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas automatically ${chalk.gray('(autoresearch)')}` },
         { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan ${chalk.gray('(strategy)')}` },
         { name: 'skills',       message: `${chalk.cyan('📚')}  Browse available skills` },
+        { name: 'schedule',     message: `${chalk.cyan('⏰')}  Schedule automations` },
         { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
         { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
         { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
@@ -298,6 +331,10 @@ async function main() {
     }
     if (action === 'skills') {
       showSkills();
+      return;
+    }
+    if (action === 'schedule') {
+      await runScheduleManager();
       return;
     }
 
