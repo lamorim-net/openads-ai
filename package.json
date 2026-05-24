@@ -1,12 +1,46 @@
 {
   "name": "openads-ai",
   "version": "0.1.0",
-  "description": "Open source AI agent for digital marketers",
+  "description": "Open-source AI command center for digital marketers. Audit campaigns, write ad copy, and build strategies — from your terminal.",
   "main": "dist/cli.js",
   "bin": {
     "openads": "dist/cli.js"
   },
   "type": "module",
+  "files": [
+    "dist/",
+    "skills/",
+    "templates/",
+    "scripts/",
+    "logo.txt",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lamorim-net/openads-ai.git"
+  },
+  "homepage": "https://github.com/lamorim-net/openads-ai",
+  "bugs": {
+    "url": "https://github.com/lamorim-net/openads-ai/issues"
+  },
+  "author": "Luiz Amorim",
+  "license": "MIT",
+  "keywords": [
+    "marketing",
+    "google-ads",
+    "meta-ads",
+    "facebook-ads",
+    "ai",
+    "advertising",
+    "copywriting",
+    "cro",
+    "cli",
+    "openads"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "piConfig": {
     "configDir": ".openads",
     "mcps": {
@@ -25,6 +59,7 @@
     "build": "tsc",
     "start": "node dist/cli.js",
     "dev": "ts-node src/cli.ts",
+    "prepublishOnly": "npm run build",
     "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
