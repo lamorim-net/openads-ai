@@ -11,7 +11,7 @@
 ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 ```
 
-> **The AI Command Center for Digital Marketers.** Bring your own LLM, connect your ad accounts, and talk to your campaigns in plain English.
+> **The AI Command Center for Digital Marketers.** Bring your own AI model, connect your ad accounts, and talk to your campaigns in plain English.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Google%20Ads-MCP-4285F4?style=flat-square&logo=google-ads" />
@@ -21,7 +21,7 @@
 
 ## The Vision
 
-Marketers shouldn't need to understand code, complex prompt engineering, or API rate limits to leverage the world's most powerful AI models. 
+Marketers shouldn't need to understand code, complex prompt engineering, or hidden server limits to leverage the world's most powerful AI models. 
 
 **OpenAds is built on a single premise: Radical Simplicity.**
 
@@ -30,7 +30,7 @@ We provide a seamless, terminal-based command center where you can connect your 
 ## Why OpenAds?
 
 - 🧠 **Pre-trained Marketing Brain (Skills)**: OpenAds comes pre-loaded with playbooks for Google Ads, Meta, SEO, CRO, and Copywriting. The AI doesn't just write text; it thinks like a senior marketer, analyzing your Ideal Customer Profile before generating a single word.
-- 🔌 **Plug-and-Play Integrations (MCPs)**: Through the Model Context Protocol (MCP), OpenAds connects directly to your platforms. No more downloading CSVs to paste into ChatGPT. 
+- 🔌 **Plug-and-Play Integrations**: OpenAds connects directly to your platforms. No more downloading spreadsheets to paste into ChatGPT. 
 - 🛡️ **Bulletproof Security**: Read what you want, but write operations are always previewed first. **Nothing goes live without your explicit `Y`.**
 - ⚡ **Autonomous Execution**: Run autonomous improvement loops to test ad variants, generate hypotheses, and score them against your strategy overnight.
 
@@ -73,8 +73,8 @@ openads
 ## 🧭 Our Core Principles
 
 To ensure OpenAds never loses its way, we strictly adhere to these principles:
-1. **Radical Simplicity:** Non-technical marketers must feel at home. No forcing users to learn JSON, prompt engineering, or API rate limits.
-2. **Marketers First, Code Second:** We design features around marketing workflows (audits, copywriting, analysis), not software paradigms.
+1. **Radical Simplicity:** Non-technical marketers must feel at home. No forcing users to learn complex code formats, prompt engineering, or API error messages.
+2. **Marketers First, Code Second:** We design features around marketing workflows (audits, copywriting, analysis), not complex software concepts.
 3. **Safety by Default:** AI should never spend money or publish campaigns without human approval. Every write operation requires an explicit `Y`.
 
 ---
