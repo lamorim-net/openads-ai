@@ -17,18 +17,117 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pkgDir = path.resolve(__dirname, '..');
 
-// ─── Bold ASCII Logo (terminal-safe, monospace-guaranteed) ──────────
-const LOGO = `
-   ####  #####  ###### #    #    ##   #####   ####
-  #    # #    # #      ##   #   #  #  #    # #
-  #    # #####  #####  # #  #  #    # #    #  ####
-  #    # #      #      #  # #  ###### #    #      #
-  #    # #      #      #   ##  #    # #    # #    #
-   ####  #      ###### #    #  #    # #####   ####
-`;
+// ─── Logo ───────────────────────────────────────────────────────────
+const LOGO = [
+  '  ██████╗ ██████╗ ███████╗███╗   ██╗ █████╗ ██████╗ ███████╗',
+  '  ██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔══██╗██╔════╝',
+  '  ██║   ██║██████╔╝█████╗  ██╔██╗ ██║███████║██║  ██║███████╗',
+  '  ██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║██╔══██║██║  ██║╚════██║',
+  '  ╚██████╔╝██║     ███████╗██║ ╚████║██║  ██║██████╔╝███████║',
+  '   ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═════╝ ╚══════╝',
+].join('\n');
 
 // Gradient palette: teal → cyan → blue
 const openadsGradient = gradient(['#00d2ff', '#3a7bd5', '#00d2ff']);
+
+// ─── Config Helpers ─────────────────────────────────────────────────
+
+const CONFIG_DIR = path.join(os.homedir(), '.openads');
+const CONFIG_PATH = path.join(CONFIG_DIR, 'openads.config.json');
+
+const DEPRECATED_MODELS: Record<string, string> = {
+  'google/gemini-1.5-pro': 'google/gemini-2.5-flash',
+  'google/gemini-1.5-pro-latest': 'google/gemini-2.5-flash',
+  'google/gemini-3.5-flash': 'google/gemini-2.5-flash',
+  'openai/gpt-4o': 'openai/gpt-4.1',
+  'openai/gpt-4o-mini': 'openai/gpt-4.1-mini',
+  'anthropic/claude-3-5-sonnet-20241022': 'anthropic/claude-sonnet-4',
+  'anthropic/claude-3-5-haiku-20241022': 'anthropic/claude-haiku-4',
+};
+
+function loadConfig(): any {
+  if (!fs.existsSync(CONFIG_PATH)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function resolveModel(provider: string): string {
+  return DEPRECATED_MODELS[provider] || provider;
+}
+
+// ─── Product Context Injection ──────────────────────────────────────
+// Writes the user's product context as a skill file so the agent always
+// knows what the user sells, who their customer is, etc.
+
+function injectProductContext(config: any): string | null {
+  if (!config?.productContext) return null;
+
+  const contextDir = path.join(CONFIG_DIR, 'context');
+  if (!fs.existsSync(contextDir)) {
+    fs.mkdirSync(contextDir, { recursive: true });
+  }
+
+  const contextPath = path.join(contextDir, 'my-business.md');
+  const content = `---
+name: my-business
+description: The user's business context — always read this first.
+---
+# My Business
+
+${config.productContext}
+
+Use this context to personalize all recommendations, ad copy, and strategy outputs.
+Always reference this when applying any marketing skill.
+`;
+
+  fs.writeFileSync(contextPath, content);
+  return contextDir;
+}
+
+// ─── System Prompt ──────────────────────────────────────────────────
+// Makes the agent behave as "OpenAds" instead of generic Pi.
+
+function buildSystemPrompt(config: any): string {
+  const parts = [
+    'You are OpenAds, an AI marketing assistant built for digital marketers.',
+    'You specialize in Google Ads, Meta Ads, copywriting, analytics, CRO, and go-to-market strategy.',
+    'Always speak in plain marketing language. Never use developer jargon.',
+    'Address the user as a marketing professional.',
+    'When writing ad copy or recommendations, always reference the user\'s product context first.',
+    'For any write operation (creating campaigns, changing budgets), always preview the change and ask for explicit confirmation before executing.',
+  ];
+
+  if (config?.productContext) {
+    parts.push(`\nThe user's business: ${config.productContext}`);
+  }
+
+  if (config?.connectGoogle) {
+    parts.push('Google Ads is connected — you can read live campaign data.');
+  }
+
+  if (config?.metaToken) {
+    parts.push('Meta Ads is connected — you can read live campaign and creative data.');
+  }
+
+  return parts.join('\n');
+}
+
+// ─── API Key Environment Variable Mapping ───────────────────────────
+// Pass API keys via environment variables instead of CLI flags (security).
+
+function getApiKeyEnvVar(provider: string): string {
+  if (provider.startsWith('google/')) return 'GOOGLE_API_KEY';
+  if (provider.startsWith('openai/')) return 'OPENAI_API_KEY';
+  if (provider.startsWith('anthropic/')) return 'ANTHROPIC_API_KEY';
+  if (provider.startsWith('groq/')) return 'GROQ_API_KEY';
+  // Fallback for OpenRouter, custom providers
+  return 'OPENAI_API_KEY';
+}
+
+// ─── Main ───────────────────────────────────────────────────────────
 
 async function main() {
   const args = process.argv.slice(2);
@@ -44,53 +143,28 @@ async function main() {
     return;
   }
 
+  // ─── First-Run Detection ────────────────────────────────────────
+  const config = loadConfig();
+
+  if (!config || !config.provider) {
+    console.clear();
+    console.log(openadsGradient(LOGO));
+    console.log(chalk.cyan.bold('\n  Welcome to OpenAds! 🎯'));
+    console.log(chalk.gray('  Looks like this is your first time. Let\'s get you set up.\n'));
+    await runSetup();
+    return;
+  }
+
   // ─── Splash Screen ──────────────────────────────────────────────
   console.clear();
+  console.log('');
   console.log(openadsGradient(LOGO));
+  console.log('');
 
-  // Read config for dynamic status
-  const configDir = path.join(os.homedir(), '.openads');
-  const configPath = path.join(configDir, 'openads.config.json');
-  let modelName = chalk.gray('Not configured');
-  let googleStatus = chalk.gray('○ Not connected');
-  let metaStatus = chalk.gray('○ Not connected');
-  let providerArg = '';
-  let apiKeyArg = '';
-
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      if (config.provider) {
-        let cleanProvider = config.provider;
-        // Normalize deprecated model names to current equivalents
-        const deprecatedModels: Record<string, string> = {
-          'google/gemini-1.5-pro': 'google/gemini-2.5-flash',
-          'google/gemini-1.5-pro-latest': 'google/gemini-2.5-flash',
-          'google/gemini-3.5-flash': 'google/gemini-2.5-flash',
-          'openai/gpt-4o': 'openai/gpt-4.1',
-          'openai/gpt-4o-mini': 'openai/gpt-4.1-mini',
-          'anthropic/claude-3-5-sonnet-20241022': 'anthropic/claude-sonnet-4',
-          'anthropic/claude-3-5-haiku-20241022': 'anthropic/claude-haiku-4',
-        };
-        if (deprecatedModels[cleanProvider]) {
-          cleanProvider = deprecatedModels[cleanProvider];
-        }
-        modelName = chalk.cyan.bold(cleanProvider);
-        providerArg = `--model ${cleanProvider}`;
-      }
-      if (config.apiKey) {
-        apiKeyArg = `--api-key ${config.apiKey}`;
-      }
-      if (config.connectGoogle) {
-        googleStatus = chalk.green('● Connected');
-      }
-      if (config.metaToken) {
-        metaStatus = chalk.green('● Connected');
-      }
-    } catch (e) {
-      // ignore malformed config
-    }
-  }
+  const cleanProvider = resolveModel(config.provider);
+  const modelName = chalk.cyan.bold(cleanProvider);
+  const googleStatus = config.connectGoogle ? chalk.green('● Connected') : chalk.gray('○ Not connected');
+  const metaStatus = config.metaToken ? chalk.green('● Connected') : chalk.gray('○ Not connected');
 
   // Build compact status panel
   const statusLines = [
@@ -120,11 +194,11 @@ async function main() {
       name: 'action',
       message: chalk.bold('What would you like to do?'),
       choices: [
-        { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my Google Ads account` },
-        { name: 'copy',         message: `${chalk.cyan('✍️')}   Write conversion ad copy` },
-        { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Run autonomous optimization` },
-        { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a Go-To-Market strategy` },
-        { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything (free chat)` },
+        { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
+        { name: 'audit',        message: `${chalk.cyan('🔍')}  Find wasted spend in my ads` },
+        { name: 'copy',         message: `${chalk.cyan('✍️')}   Generate ad headlines & copy` },
+        { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Let AI improve my ads overnight` },
+        { name: 'gtm',          message: `${chalk.cyan('📈')}  Plan a product launch` },
         { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
         { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
         { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
@@ -145,11 +219,11 @@ async function main() {
     }
 
     const actionMap: Record<string, string[]> = {
+      chat:         [],
       audit:        ['audit-google-ads'],
       copy:         ['write-ad-copy'],
       autoresearch: ['autoresearch-plan'],
       gtm:          ['go-to-market'],
-      chat:         [],
     };
     finalArgs = actionMap[action] || [];
   }
@@ -161,43 +235,47 @@ async function main() {
     color: 'cyan',
   }).start();
 
-  // Simulate brief init delay so the user sees the spinner
   await new Promise(r => setTimeout(r, 800));
 
   // ─── Build Pi Arguments ─────────────────────────────────────────
-  let piArgsRaw: string[] = [];
-  if (providerArg) piArgsRaw.push(...providerArg.split(' '));
-  if (apiKeyArg) piArgsRaw.push(...apiKeyArg.split(' '));
+  const piArgsRaw: string[] = [];
 
+  // Model flag
+  piArgsRaw.push('--model', cleanProvider);
+
+  // Skills directories
   const skillsDir = path.join(pkgDir, 'skills');
   const templatesDir = path.join(pkgDir, 'templates');
+
+  // Inject product context as a skill directory
+  const contextDir = injectProductContext(config);
 
   const piArgs = [
     ...piArgsRaw,
     '--skill', skillsDir,
     '--prompt-template', templatesDir,
+    ...(contextDir ? ['--skill', contextDir] : []),
     ...finalArgs
   ];
 
+  // ─── Environment Variables ──────────────────────────────────────
+  // API key passed via env var (not CLI flag) for security
   const env: any = {
     ...process.env,
-    NODE_NO_WARNINGS: '1'
+    NODE_NO_WARNINGS: '1',
   };
 
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      if (config.localBaseUrl) {
-        env.OPENAI_BASE_URL = config.localBaseUrl;
-      }
-    } catch (e) {}
+  if (config.apiKey && config.apiKey !== 'dummy-key') {
+    const envVarName = getApiKeyEnvVar(cleanProvider);
+    env[envVarName] = config.apiKey;
+  }
+
+  if (config.localBaseUrl) {
+    env.OPENAI_BASE_URL = config.localBaseUrl;
   }
 
   // ─── White-Label Patch ──────────────────────────────────────────
-  // Branding and configDir are patched at install-time via postinstall script.
-
-  // Silence Pi's default startup banner
-  const agentDir = path.join(os.homedir(), '.openads', 'agent');
+  const agentDir = path.join(CONFIG_DIR, 'agent');
   if (!fs.existsSync(agentDir)) {
     fs.mkdirSync(agentDir, { recursive: true });
   }
@@ -206,36 +284,30 @@ async function main() {
   if (fs.existsSync(settingsPath)) {
     try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch (e) {}
   }
-  if (!settings.quietStartup) {
-    settings.quietStartup = true;
-  }
 
-  // Inject resilient retry settings for strict free-tier rate limits (e.g. Gemini 15 RPM)
+  settings.quietStartup = true;
+
+  // System prompt — makes the agent behave as OpenAds
+  settings.systemPrompt = buildSystemPrompt(config);
+
+  // Resilient retry settings for free-tier rate limits
   settings.retry = {
     maxAttempts: 10,
     baseDelayMs: 15000,
     provider: { maxRetryDelayMs: 120000 }
   };
 
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-
   // Inject Meta MCP server if token is present
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      if (config.metaToken) {
-        settings.mcpServers = settings.mcpServers || {};
-        settings.mcpServers['meta-ads'] = {
-          command: 'npx',
-          args: ['-y', '@meta/mcp-server'],
-          env: {
-            META_ACCESS_TOKEN: config.metaToken
-          }
-        };
-        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-      }
-    } catch (e) {}
+  if (config.metaToken) {
+    settings.mcpServers = settings.mcpServers || {};
+    settings.mcpServers['meta-ads'] = {
+      command: 'npx',
+      args: ['-y', '@meta/mcp-server'],
+      env: { META_ACCESS_TOKEN: config.metaToken }
+    };
   }
+
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
   // ─── Launch Agent ───────────────────────────────────────────────
   const piCliPath = path.resolve(pkgDir, 'node_modules', '@earendil-works', 'pi-coding-agent', 'dist', 'cli.js');
