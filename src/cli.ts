@@ -7,18 +7,33 @@ import fs from 'fs';
 import os from 'os';
 import chalk from 'chalk';
 import boxen from 'boxen';
-import { renderFilled } from 'oh-my-logo';
+import gradient from 'gradient-string';
+import ora from 'ora';
 import { runSetup } from './setup.js';
 import { runDoctor } from './doctor.js';
+import enquirer from 'enquirer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const pkgDir = path.resolve(__dirname, '..');
 
+// ─── Bold ASCII Logo (terminal-safe, monospace-guaranteed) ──────────
+const LOGO = `
+   ####  #####  ###### #    #    ##   #####   ####
+  #    # #    # #      ##   #   #  #  #    # #
+  #    # #####  #####  # #  #  #    # #    #  ####
+  #    # #      #      #  # #  ###### #    #      #
+  #    # #      #      #   ##  #    # #    # #    #
+   ####  #      ###### #    #  #    # #####   ####
+`;
+
+// Gradient palette: teal → cyan → blue
+const openadsGradient = gradient(['#00d2ff', '#3a7bd5', '#00d2ff']);
+
 async function main() {
   const args = process.argv.slice(2);
 
-  // Command routing
+  // Command routing — setup & doctor skip the splash
   if (args[0] === 'setup') {
     await runSetup();
     return;
@@ -29,20 +44,16 @@ async function main() {
     return;
   }
 
-  // Splash Screen
+  // ─── Splash Screen ──────────────────────────────────────────────
   console.clear();
-  const openadsLogo = await renderFilled('OpenAds', {
-    palette: 'ocean',
-    font: 'shade',
-    letterSpacing: 4
-  });
+  console.log(openadsGradient(LOGO));
 
-  // Read config to build dynamic status panel
+  // Read config for dynamic status
   const configDir = path.join(os.homedir(), '.openads');
   const configPath = path.join(configDir, 'openads.config.json');
-  let modelName = 'Not Configured';
-  let googleStatus = chalk.gray('✗ Not Connected');
-  let metaStatus = chalk.gray('✗ Not Connected');
+  let modelName = chalk.gray('Not configured');
+  let googleStatus = chalk.gray('○ Not connected');
+  let metaStatus = chalk.gray('○ Not connected');
   let providerArg = '';
   let apiKeyArg = '';
 
@@ -51,51 +62,110 @@ async function main() {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       if (config.provider) {
         let cleanProvider = config.provider;
-        if (cleanProvider === 'google/gemini-1.5-pro' || cleanProvider === 'google/gemini-1.5-pro-latest') {
-          cleanProvider = 'google/gemini-3.5-flash';
+        // Normalize deprecated model names to current equivalents
+        const deprecatedModels: Record<string, string> = {
+          'google/gemini-1.5-pro': 'google/gemini-2.5-flash',
+          'google/gemini-1.5-pro-latest': 'google/gemini-2.5-flash',
+          'google/gemini-3.5-flash': 'google/gemini-2.5-flash',
+          'openai/gpt-4o': 'openai/gpt-4.1',
+          'openai/gpt-4o-mini': 'openai/gpt-4.1-mini',
+          'anthropic/claude-3-5-sonnet-20241022': 'anthropic/claude-sonnet-4',
+          'anthropic/claude-3-5-haiku-20241022': 'anthropic/claude-haiku-4',
+        };
+        if (deprecatedModels[cleanProvider]) {
+          cleanProvider = deprecatedModels[cleanProvider];
         }
-        modelName = chalk.cyan(cleanProvider);
+        modelName = chalk.cyan.bold(cleanProvider);
         providerArg = `--model ${cleanProvider}`;
       }
       if (config.apiKey) {
         apiKeyArg = `--api-key ${config.apiKey}`;
       }
       if (config.connectGoogle) {
-        googleStatus = chalk.green('✓ Connected');
+        googleStatus = chalk.green('● Connected');
       }
       if (config.metaToken) {
-        metaStatus = chalk.green('✓ Connected');
+        metaStatus = chalk.green('● Connected');
       }
     } catch (e) {
-      // ignore
+      // ignore malformed config
     }
   }
 
-  const statusPanel = `
-  ${chalk.bold('Model')}     ${modelName}
-  ${chalk.bold('Google')}    ${googleStatus}
-  ${chalk.bold('Meta')}      ${metaStatus}
-  ${chalk.bold('Skills')}    product · ads · copy · autoresearch
-  `;
-
-  const boxContent = `
-  ${chalk.cyan('OpenAds v0.1.0')}  ${chalk.gray('AI for marketers')}
-${chalk.gray('───────────────────────────────────────────────')}
-${statusPanel}`;
+  // Build compact status panel
+  const statusLines = [
+    `  ${chalk.bold.white('Model')}       ${modelName}`,
+    `  ${chalk.bold.white('Google Ads')}  ${googleStatus}`,
+    `  ${chalk.bold.white('Meta Ads')}    ${metaStatus}`,
+    '',
+    `  ${chalk.gray('v0.1.0')}  ${chalk.gray('·')}  ${chalk.gray('AI Command Center for Marketers')}`,
+  ].join('\n');
 
   console.log(
-    boxen(boxContent, {
-      padding: 1,
-      margin: 1,
-      borderStyle: 'double',
+    boxen(statusLines, {
+      padding: { top: 1, bottom: 1, left: 2, right: 2 },
+      margin: { top: 0, bottom: 1, left: 2, right: 2 },
+      borderStyle: 'round',
       borderColor: 'cyan',
+      dimBorder: true,
     })
   );
 
-  console.log('  Type your question or /help for commands\n');
+  // ─── Interactive Menu (when no args) ────────────────────────────
+  let finalArgs = [...args];
 
-  // Build pi arguments dynamically from config
-  let piArgsRaw = [];
+  if (args.length === 0) {
+    const { action } = await enquirer.prompt<{ action: string }>({
+      type: 'select',
+      name: 'action',
+      message: chalk.bold('What would you like to do?'),
+      choices: [
+        { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my Google Ads account` },
+        { name: 'copy',         message: `${chalk.cyan('✍️')}   Write conversion ad copy` },
+        { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Run autonomous optimization` },
+        { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a Go-To-Market strategy` },
+        { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything (free chat)` },
+        { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
+        { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
+        { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
+      ]
+    });
+
+    if (action === 'exit') {
+      console.log(chalk.cyan('\n  Goodbye! Keep marketing 🎯\n'));
+      return;
+    }
+    if (action === 'setup') {
+      await runSetup();
+      return;
+    }
+    if (action === 'doctor') {
+      await runDoctor();
+      return;
+    }
+
+    const actionMap: Record<string, string[]> = {
+      audit:        ['audit-google-ads'],
+      copy:         ['write-ad-copy'],
+      autoresearch: ['autoresearch-plan'],
+      gtm:          ['go-to-market'],
+      chat:         [],
+    };
+    finalArgs = actionMap[action] || [];
+  }
+
+  // ─── Loading Spinner ────────────────────────────────────────────
+  const spinner = ora({
+    text: chalk.cyan('Starting marketing agent...'),
+    spinner: 'dots12',
+    color: 'cyan',
+  }).start();
+
+  // Simulate brief init delay so the user sees the spinner
+  await new Promise(r => setTimeout(r, 800));
+
+  // ─── Build Pi Arguments ─────────────────────────────────────────
+  let piArgsRaw: string[] = [];
   if (providerArg) piArgsRaw.push(...providerArg.split(' '));
   if (apiKeyArg) piArgsRaw.push(...apiKeyArg.split(' '));
 
@@ -106,7 +176,7 @@ ${statusPanel}`;
     ...piArgsRaw,
     '--skill', skillsDir,
     '--prompt-template', templatesDir,
-    ...args
+    ...finalArgs
   ];
 
   const env: any = {
@@ -123,20 +193,10 @@ ${statusPanel}`;
     } catch (e) {}
   }
 
-  // --- WHITE-LABEL PATCH ---
-  // 1. Force Pi to adopt OpenAds branding and directory
-  const piPkgPath = path.resolve(pkgDir, 'node_modules', '@earendil-works', 'pi-coding-agent', 'package.json');
-  if (fs.existsSync(piPkgPath)) {
-    try {
-      const piPkg = JSON.parse(fs.readFileSync(piPkgPath, 'utf8'));
-      if (!piPkg.piConfig || piPkg.piConfig.name !== 'openads') {
-        piPkg.piConfig = { name: 'openads', configDir: '.openads' };
-        fs.writeFileSync(piPkgPath, JSON.stringify(piPkg, null, 2));
-      }
-    } catch (e) {}
-  }
+  // ─── White-Label Patch ──────────────────────────────────────────
+  // Branding and configDir are patched at install-time via postinstall script.
 
-  // 2. Silence Pi's default startup banner entirely
+  // Silence Pi's default startup banner
   const agentDir = path.join(os.homedir(), '.openads', 'agent');
   if (!fs.existsSync(agentDir)) {
     fs.mkdirSync(agentDir, { recursive: true });
@@ -176,10 +236,17 @@ ${statusPanel}`;
       }
     } catch (e) {}
   }
-  // --- END WHITE-LABEL PATCH ---
 
+  // ─── Launch Agent ───────────────────────────────────────────────
   const piCliPath = path.resolve(pkgDir, 'node_modules', '@earendil-works', 'pi-coding-agent', 'dist', 'cli.js');
-  
+
+  spinner.succeed(chalk.green('Agent ready'));
+  console.log('');
+
+  if (finalArgs.length === 0) {
+    console.log(chalk.gray('  Type your question or /help for commands\n'));
+  }
+
   const child = spawn('node', [piCliPath, ...piArgs], {
     stdio: 'inherit',
     env

@@ -3,21 +3,27 @@ import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { renderFilled } from 'oh-my-logo';
+import gradient from 'gradient-string';
 import open from 'open';
+
+const SETUP_LOGO = `
+   ####  #####  ###### #    #    ##   #####   ####
+  #    # #    # #      ##   #   #  #  #    # #
+  #    # #####  #####  # #  #  #    # #    #  ####
+  #    # #      #      #  # #  ###### #    #      #
+  #    # #      #      #   ##  #    # #    # #    #
+   ####  #      ###### #    #  #    # #####   ####
+`;
+
+const openadsGradient = gradient(['#00d2ff', '#3a7bd5', '#00d2ff']);
 
 export async function runSetup() {
   console.clear();
-  const openadsLogo = await renderFilled('OpenAds', {
-    palette: 'ocean',
-    font: 'block',
-    letterSpacing: 2
-  });
-  console.log(openadsLogo);
-  
-  console.log(chalk.cyan.bold('\nWelcome to OpenAds 🎯'));
-  console.log('Your AI co-pilot for digital marketing.');
-  console.log(chalk.gray('─────────────────────────────────────────\n'));
+  console.log(openadsGradient(SETUP_LOGO));
+
+  console.log(chalk.cyan.bold('  Setup Wizard 🎯'));
+  console.log(chalk.gray('  Connect your AI model, ad platforms, and tell us about your business.\n'));
+  console.log(chalk.gray('  ─────────────────────────────────────────────────────────\n'));
 
   const configDir = path.join(os.homedir(), '.openads');
   const configPath = path.join(configDir, 'openads.config.json');
@@ -59,6 +65,58 @@ export async function runSetup() {
     choices: providerChoices,
     initial: initialProviderIndex
   });
+
+  let selectedModel = '';
+
+  if (provider === 'google') {
+    const googleChoices = [
+      { name: 'google/gemini-2.5-flash', message: 'Gemini 2.5 Flash (Recommended — Fast, smart & cost-effective)' },
+      { name: 'google/gemini-2.5-pro', message: 'Gemini 2.5 Pro (Powerhouse — Best reasoning, huge context)' }
+    ];
+    let initialIndex = 0;
+    if (existingConfig.provider && existingConfig.provider.includes('gemini-2.5-pro')) initialIndex = 1;
+
+    let { model } = await enquirer.prompt<{ model: string }>({
+      type: 'select',
+      name: 'model',
+      message: 'Choose your Google Gemini model:',
+      choices: googleChoices,
+      initial: initialIndex
+    });
+    selectedModel = model;
+  } else if (provider === 'openai') {
+    const openaiChoices = [
+      { name: 'openai/gpt-4.1', message: 'GPT-4.1 (Recommended — Excellent instruction following)' },
+      { name: 'openai/gpt-4.1-mini', message: 'GPT-4.1 Mini (Lightweight — Fast and budget-friendly)' }
+    ];
+    let initialIndex = 0;
+    if (existingConfig.provider && existingConfig.provider.includes('gpt-4.1-mini')) initialIndex = 1;
+
+    let { model } = await enquirer.prompt<{ model: string }>({
+      type: 'select',
+      name: 'model',
+      message: 'Choose your OpenAI model:',
+      choices: openaiChoices,
+      initial: initialIndex
+    });
+    selectedModel = model;
+  } else if (provider === 'anthropic') {
+    const anthropicChoices = [
+      { name: 'anthropic/claude-sonnet-4', message: 'Claude Sonnet 4 (Recommended — Outstanding reasoning)' },
+      { name: 'anthropic/claude-haiku-4', message: 'Claude Haiku 4 (Lightweight — Fast & responsive)' }
+    ];
+    let initialIndex = 0;
+    if (existingConfig.provider && existingConfig.provider.includes('claude-haiku')) initialIndex = 1;
+
+    let { model } = await enquirer.prompt<{ model: string }>({
+      type: 'select',
+      name: 'model',
+      message: 'Choose your Anthropic Claude model:',
+      choices: anthropicChoices,
+      initial: initialIndex
+    });
+    selectedModel = model;
+  }
 
   let customModel = '';
   let localModelName = '';
@@ -176,10 +234,19 @@ export async function runSetup() {
     });
 
     if (googleAction === 'run') {
-      console.log(chalk.cyan('\nLaunching Google OAuth...'));
       const { spawnSync } = await import('child_process');
-      spawnSync('uvx', ['adloop', 'init'], { stdio: 'inherit' });
-      console.log('');
+      const uvxCheck = spawnSync('uvx', ['--version']);
+      if (uvxCheck.status !== 0) {
+        console.log(chalk.red('\n🛑 Google Ads Setup Error: `uv` is not installed.'));
+        console.log(chalk.gray('Google Ads integration requires `uv`, a ultra-fast tool runner.'));
+        console.log(chalk.cyan('To install `uv` on your Mac, open a new terminal window and run:'));
+        console.log(chalk.white.bold('  curl -LsSf https://astral.sh/uv/install.sh | sh'));
+        console.log(chalk.cyan('\nAfter installing it, please restart this setup wizard.\n'));
+      } else {
+        console.log(chalk.cyan('\nLaunching Google OAuth...'));
+        spawnSync('uvx', ['adloop', 'init'], { stdio: 'inherit' });
+        console.log('');
+      }
     }
     console.log(chalk.green('✓ Google Ads module enabled.\n'));
   }
@@ -229,15 +296,72 @@ export async function runSetup() {
       console.log(chalk.gray('5. Click "Generate New Token", select your App, check "ads_read" and "ads_management", and click Generate.'));
     }
 
-    const metaAnswers = await enquirer.prompt<{ metaToken: string }>({
-      type: 'password',
-      name: 'metaToken',
-      message: 'Paste your Meta System User Access Token:',
-      initial: existingConfig.metaToken || '',
-      validate: (value) => value.trim() ? true : 'Token cannot be empty.'
-    });
-    metaToken = metaAnswers.metaToken;
-    console.log(chalk.green('✓ Meta Ads module enabled.\n'));
+    let tokenVerified = false;
+    while (!tokenVerified) {
+      const metaAnswers = await enquirer.prompt<{ metaToken: string }>({
+        type: 'password',
+        name: 'metaToken',
+        message: 'Paste your Meta System User Access Token:',
+        initial: existingConfig.metaToken || '',
+        validate: (value) => value.trim() ? true : 'Token cannot be empty.'
+      });
+      metaToken = metaAnswers.metaToken;
+
+      console.log(chalk.cyan('🔄 Verifying Meta token live...'));
+      try {
+        const res = await fetch(`https://graph.facebook.com/v21.0/me?access_token=${metaToken}`);
+        const data: any = await res.json();
+        if (res.ok && data.id) {
+          console.log(chalk.green('\n✓ Token active & verified successfully!\n'));
+          tokenVerified = true;
+        } else {
+          const errMsg = data.error?.message || 'Invalid Token';
+          console.log(chalk.red(`\n🛑 Connection Failed: ${errMsg}\n`));
+          
+          const { retryAction } = await enquirer.prompt<{ retryAction: string }>({
+            type: 'select',
+            name: 'retryAction',
+            message: 'How would you like to handle this?',
+            choices: [
+              { name: 'retry', message: 'Try again (Re-paste token)' },
+              { name: 'keep', message: 'Keep anyway (I am sure it is correct)' },
+              { name: 'skip', message: 'Skip Meta Ads connection' }
+            ]
+          });
+
+          if (retryAction === 'keep') {
+            tokenVerified = true;
+          } else if (retryAction === 'skip') {
+            metaToken = '';
+            break;
+          }
+        }
+      } catch (e: any) {
+        console.log(chalk.red(`\n🛑 Network error verifying token: ${e.message}\n`));
+        const { retryAction } = await enquirer.prompt<{ retryAction: string }>({
+          type: 'select',
+          name: 'retryAction',
+          message: 'How would you like to handle this?',
+          choices: [
+            { name: 'retry', message: 'Try again' },
+            { name: 'keep', message: 'Keep anyway' },
+            { name: 'skip', message: 'Skip Meta Ads connection' }
+          ]
+        });
+
+        if (retryAction === 'keep') {
+          tokenVerified = true;
+        } else if (retryAction === 'skip') {
+          metaToken = '';
+          break;
+        }
+      }
+    }
+    if (metaToken) {
+      console.log(chalk.green('✓ Meta Ads module enabled.\n'));
+    } else {
+      console.log(chalk.yellow('✓ Meta Ads module skipped.\n'));
+    }
   }
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
@@ -256,9 +380,9 @@ export async function runSetup() {
 
   // Map providers to their default model strings
   let finalModel = provider;
-  if (provider === 'google') finalModel = 'google/gemini-3.5-flash';
-  if (provider === 'anthropic') finalModel = 'anthropic/claude-3-5-sonnet-20241022';
-  if (provider === 'openai') finalModel = 'openai/gpt-4o';
+  if (provider === 'google' || provider === 'openai' || provider === 'anthropic') {
+    finalModel = selectedModel;
+  }
   if (provider === 'other') finalModel = customModel;
   if (provider === 'local') finalModel = `openai/${localModelName}`;
 
