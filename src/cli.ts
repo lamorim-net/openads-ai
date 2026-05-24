@@ -195,10 +195,10 @@ async function main() {
       message: chalk.bold('What would you like to do?'),
       choices: [
         { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
-        { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns` },
-        { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform` },
-        { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ad variants automatically` },
-        { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan` },
+        { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns ${chalk.gray('(audit)')}` },
+        { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform ${chalk.gray('(copywriting)')}` },
+        { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas automatically ${chalk.gray('(autoresearch)')}` },
+        { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan ${chalk.gray('(strategy)')}` },
         { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
         { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
         { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
