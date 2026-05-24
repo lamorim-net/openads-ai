@@ -17,22 +17,45 @@ export async function runSetup() {
     console.log('Your AI co-pilot for digital marketing.');
     console.log(chalk.gray('─────────────────────────────────────────\n'));
     const configDir = path.join(os.homedir(), '.openads');
+    const configPath = path.join(configDir, 'openads.config.json');
     if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true });
     }
+    let existingConfig = {};
+    if (fs.existsSync(configPath)) {
+        try {
+            existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        }
+        catch (e) { }
+    }
     // Step 1: Model Selection
     console.log(chalk.cyan('Step 1/4: Choose your AI model\n'));
+    const providerChoices = [
+        { name: 'google', message: 'Google (Gemini)' },
+        { name: 'openai', message: 'OpenAI (ChatGPT)' },
+        { name: 'anthropic', message: 'Anthropic (Claude)' },
+        { name: 'local', message: 'Local AI (Ollama, LM Studio)' },
+        { name: 'other', message: 'Other (Groq, OpenRouter, etc.)' }
+    ];
+    let initialProviderIndex = 0;
+    if (existingConfig.provider) {
+        if (existingConfig.provider.includes('google'))
+            initialProviderIndex = 0;
+        else if (existingConfig.provider.includes('openai') && !existingConfig.localBaseUrl)
+            initialProviderIndex = 1;
+        else if (existingConfig.provider.includes('anthropic'))
+            initialProviderIndex = 2;
+        else if (existingConfig.localBaseUrl)
+            initialProviderIndex = 3;
+        else
+            initialProviderIndex = 4;
+    }
     let { provider } = await enquirer.prompt({
         type: 'select',
         name: 'provider',
         message: 'Which AI Provider would you like to use?',
-        choices: [
-            { name: 'google', message: 'Google (Gemini)' },
-            { name: 'openai', message: 'OpenAI (ChatGPT)' },
-            { name: 'anthropic', message: 'Anthropic (Claude)' },
-            { name: 'local', message: 'Local AI (Ollama, LM Studio)' },
-            { name: 'other', message: 'Other (Groq, OpenRouter, etc.)' }
-        ]
+        choices: providerChoices,
+        initial: initialProviderIndex
     });
     let customModel = '';
     let localModelName = '';
@@ -46,13 +69,13 @@ export async function runSetup() {
                 type: 'input',
                 name: 'localModelName',
                 message: 'What is the exact name of your local model? (e.g., llama3, mistral)',
-                initial: 'llama3'
+                initial: existingConfig.provider && existingConfig.provider.replace('openai/', '') || 'llama3'
             },
             {
                 type: 'input',
                 name: 'localBaseUrl',
                 message: 'What is your local API endpoint?',
-                initial: 'http://localhost:11434/v1'
+                initial: existingConfig.localBaseUrl || 'http://localhost:11434/v1'
             }
         ]);
         localModelName = localAnswers.localModelName;
@@ -68,7 +91,8 @@ export async function runSetup() {
         const otherAnswers = await enquirer.prompt({
             type: 'input',
             name: 'customModel',
-            message: 'Enter your custom provider/model:'
+            message: 'Enter your custom provider/model:',
+            initial: existingConfig.provider && initialProviderIndex === 4 ? existingConfig.provider : ''
         });
         customModel = otherAnswers.customModel;
     }
@@ -91,6 +115,7 @@ export async function runSetup() {
             type: 'password',
             name: 'apiKey',
             message: provider === 'other' ? `Paste your API key for ${customModel.split('/')[0]}:` : `Paste your ${provider} API key:`,
+            initial: existingConfig.apiKey || '',
             validate: (value) => {
                 if (!value.trim()) {
                     return 'API key cannot be empty.';
@@ -112,7 +137,8 @@ export async function runSetup() {
     const { connectGoogle } = await enquirer.prompt({
         type: 'confirm',
         name: 'connectGoogle',
-        message: 'Connect Google Ads?'
+        message: 'Connect Google Ads?',
+        initial: existingConfig.connectGoogle !== undefined ? existingConfig.connectGoogle : false
     });
     if (connectGoogle) {
         console.log(chalk.gray('\nSee docs/connect-google-ads.md for how to authenticate via `uvx adloop init`'));
@@ -125,7 +151,8 @@ export async function runSetup() {
     const { connectMeta } = await enquirer.prompt({
         type: 'confirm',
         name: 'connectMeta',
-        message: 'Connect Meta Ads?'
+        message: 'Connect Meta Ads?',
+        initial: existingConfig.connectMeta !== undefined ? existingConfig.connectMeta : false
     });
     if (connectMeta) {
         console.log(chalk.gray('\nSee docs/connect-meta.md for how to authenticate via `/mcp auth meta-ads`'));
@@ -137,7 +164,8 @@ export async function runSetup() {
     const { productContext } = await enquirer.prompt({
         type: 'input',
         name: 'productContext',
-        message: 'What do you sell or promote?'
+        message: 'What do you sell or promote?',
+        initial: existingConfig.productContext || ''
     });
     console.log(chalk.green('\n✓ Got it. I\'ll remember this context across all your sessions.\n'));
     console.log(chalk.gray('─────────────────────────────────────────\n'));
