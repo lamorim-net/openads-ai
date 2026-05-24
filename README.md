@@ -92,7 +92,7 @@ and press **Enter** to open your dashboard.
 
 ---
 
-### 💻 Experienced developer? Quick commands
+### 💻 Already know how to use the terminal? Quick commands
 
 If you're already familiar with node packages, just run:
 
