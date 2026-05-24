@@ -72,14 +72,39 @@ That's it. You'll see a menu with quick actions. Pick one, or just type your que
 
 ## 💡 What can I do with it?
 
-Here are some real examples:
+Here are some real examples — just type what you need:
 
+### Ads
 | You type | What happens |
 |---|---|
-| `Audit my Google Ads account and flag budget waste` | The AI reads your live campaign data, identifies underperforming keywords, and tells you exactly where you're losing money. |
-| `Write 3 Meta ad headlines for my product` | The AI uses your product context to generate targeted, conversion-focused headlines within platform character limits. |
-| `/autoresearch-plan` | The AI works autonomously — analyzing competitors, generating hypotheses, and reporting back with a full strategy. |
-| `Build a go-to-market plan for my Q3 launch` | The AI produces a structured GTM playbook covering positioning, channels, budget, and timelines. |
+| `Audit my Google Ads account and flag budget waste` | Reads your live campaign data, finds underperforming keywords, and tells you where you're losing money. |
+| `My Meta ROAS dropped 30% this week — what changed?` | Pulls your Meta Ads data, compares to the prior period, and pinpoints what shifted. |
+| `Write a 30-second video ad script for TikTok` | Generates a hook → story → CTA script formatted for vertical video with platform-specific timing. |
+
+### Copywriting
+| You type | What happens |
+|---|---|
+| `Write 5 Google Ads headlines for my product` | Generates headlines under 30 characters using your product context, with multiple creative angles. |
+| `Rewrite this landing page to be more persuasive` | Applies PAS/AIDA frameworks, tightens the copy, and fixes benefit vs. feature balance. |
+
+### Strategy
+| You type | What happens |
+|---|---|
+| `Build a go-to-market plan for my Q3 launch` | Produces a structured GTM playbook covering positioning, channels, budget, and timelines. |
+| `Who are my top 3 competitors and what are they saying in their ads?` | Analyzes competitor positioning, identifies messaging gaps, and recommends differentiation angles. |
+| `Research my target audience for a B2B SaaS product` | Builds a customer research brief: pain points, buying triggers, objections, and voice-of-customer language. |
+
+### Optimization
+| You type | What happens |
+|---|---|
+| `My landing page converts at 1.2% — how do I improve it?` | Runs a CRO audit: checks message match, CTA placement, form length, and gives prioritized fixes. |
+| `Set up an A/B test for my signup page headline` | Designs a proper experiment with hypothesis, control vs. variant, sample size, and success criteria. |
+| `Run autoresearch on my ad headlines overnight` | The AI autonomously generates variants, scores them, keeps the best, and reports back in the morning. |
+
+### Post-Click
+| You type | What happens |
+|---|---|
+| `Write a 5-email welcome sequence for new signups` | Creates a full drip sequence: delivery → value → story → objection handling → soft pitch. |
 
 ---
 
@@ -109,12 +134,11 @@ This verifies your config file, API keys, platform connections (live token check
 - [x] Google Ads integration via MCP
 - [x] Meta Ads integration via MCP
 - [x] Interactive setup wizard with live token verification
-- [x] Pre-built skills: Google Ads, Meta, SEO, CRO, Copywriting, Analytics
+- [x] 12 pre-built skills: Ads, CRO, Copywriting, Analytics, Email, Video, Research, Strategy
 - [x] Autonomous research loops
 - [ ] LinkedIn Ads integration
 - [ ] Pinterest Ads integration
 - [ ] Publish to npm registry
-- [ ] Web dashboard (long-term)
 
 ---
 
