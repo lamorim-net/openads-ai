@@ -6,9 +6,10 @@ OpenAds connects to Meta (Facebook/Instagram) using Meta's official hosted MCP. 
 1. Go to [Meta Business Settings](https://business.facebook.com/settings/system-users).
 2. Click **Add** to create a new System User (or select an existing one).
 3. Click **Add Assets**, select your Ad Accounts, and grant "Manage Campaigns" permission.
-4. Click **Generate New Token**.
-5. Check the boxes for `ads_read` and `ads_management` permissions.
-6. Click Generate and copy the long token string.
+4. Under "Add Assets" -> "Apps", assign a Meta Developer App (Create a basic one at developers.facebook.com if needed).
+5. Click **Generate New Token** and select your App.
+6. Check the boxes for `ads_read` and `ads_management` permissions.
+7. Click Generate and copy the long token string.
 
 ## 2. Authenticate
 Run the setup wizard in your terminal:
