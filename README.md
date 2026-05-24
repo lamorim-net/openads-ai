@@ -1,6 +1,6 @@
 # OpenAds 🎯
 
-> **The open-source AI agent for digital marketers.** Bring your own LLM, connect your ad accounts, and talk to your campaigns in plain English.
+> **The AI Command Center for Digital Marketers.** Bring your own LLM, connect your ad accounts, and talk to your campaigns in plain English.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Google%20Ads-MCP-4285F4?style=flat-square&logo=google-ads" />
@@ -8,13 +8,20 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" />
 </p>
 
-OpenAds is an autonomous AI co-pilot designed specifically for performance marketers, media buyers, and growth leads. It combines the power of modern LLMs with deep marketing context (Skills) and direct platform access (MCPs).
+## The Vision
 
-## Features
-- **No-code Setup**: A guided terminal wizard connects your API keys and OAuth accounts in 60 seconds.
-- **Marketing Skills**: Comes pre-loaded with playbooks for Google Ads, Meta, SEO, CRO, and Copywriting. The AI thinks like a senior marketer.
-- **Platform Access**: Connects to Google Ads and Meta Ads securely. **Write operations are always previewed first — nothing goes live without your explicit `Y`.**
-- **Autoresearch**: Run autonomous improvement loops to test ad variants, generate hypotheses, and score them against your strategy overnight.
+Marketers shouldn't need to understand code, complex prompt engineering, or API rate limits to leverage the world's most powerful AI models. 
+
+**OpenAds is built on a single premise: Radical Simplicity.**
+
+We provide a seamless, terminal-based command center where you can connect your data sources, load pre-built marketing intelligence, and command your advertising infrastructure autonomously. It bridges the gap between state-of-the-art AI agents and the everyday workflows of performance marketers, media buyers, and growth leads.
+
+## Why OpenAds?
+
+- 🧠 **Pre-trained Marketing Brain (Skills)**: OpenAds comes pre-loaded with playbooks for Google Ads, Meta, SEO, CRO, and Copywriting. The AI doesn't just write text; it thinks like a senior marketer, analyzing your Ideal Customer Profile before generating a single word.
+- 🔌 **Plug-and-Play Integrations (MCPs)**: Through the Model Context Protocol (MCP), OpenAds connects directly to your platforms. No more downloading CSVs to paste into ChatGPT. 
+- 🛡️ **Bulletproof Security**: Read what you want, but write operations are always previewed first. **Nothing goes live without your explicit `Y`.**
+- ⚡ **Autonomous Execution**: Run autonomous improvement loops to test ad variants, generate hypotheses, and score them against your strategy overnight.
 
 ---
 
@@ -29,9 +36,9 @@ npm install -g openads-ai
 ```bash
 openads setup
 ```
-*The setup wizard will ask you to choose your LLM (Claude, GPT, etc.), connect your Google/Meta accounts via your browser, and set your product context.*
+*The no-code setup wizard will ask you to choose your preferred AI model (Google Gemini, OpenAI, Claude, or Local AI), connect your Google/Meta accounts, and define your core product context.*
 
-**3. Run**
+**3. Run the Command Center**
 ```bash
 openads
 ```
@@ -46,9 +53,9 @@ openads
 
 ## How It Works Under the Hood
 
-OpenAds is a seamless experience built on top of incredible open-source projects:
+OpenAds is a frictionless wrapper built on top of incredible open-source projects:
 
-1. **The Engine**: OpenAds runs on the [Pi](https://pi.dev) agent framework.
+1. **The Engine**: OpenAds runs on the highly capable [Pi](https://pi.dev) autonomous coding agent framework.
 2. **The Skills**: The marketing knowledge injected into the context is inspired by [marketingskills](https://github.com/coreyhaines31/marketingskills).
 3. **The Tools**: Google Ads integration is powered by a built-in fork of [adloop](https://github.com/kLOsk/adloop). Meta Ads integration connects directly to Meta's official hosted MCP.
 
@@ -56,9 +63,9 @@ OpenAds is a seamless experience built on top of incredible open-source projects
 
 ## Contributing
 
-We want OpenAds to be the standard tool for AI-assisted marketing. The best way to contribute is to add or improve a **Skill**.
+We want OpenAds to be the standard open-source tool for AI-assisted marketing. Whether you are a senior media buyer or a Typescript developer, you can help build the future of this project.
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) to see how you can add a new skill markdown file in minutes.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) to see how you can contribute to the marketing brain or build new MCP integrations.
 
 ---
 
