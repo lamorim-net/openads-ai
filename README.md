@@ -19,10 +19,6 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" />
 </p>
 
-<p align="center">
-  <img src="docs/images/screenshot.png" alt="OpenAds Welcome Screen" width="600" />
-</p>
-
 ---
 
 ## What is OpenAds?
@@ -40,6 +36,16 @@ OpenAds is an **open-source CLI tool** that turns any AI model into a marketing 
 | 🤖 **Bring your own model** | Use Google Gemini, OpenAI, Claude, or a local model running on your machine. Your choice. |
 | 🛡️ **Nothing goes live without you** | The AI can read freely, but every write operation (campaign change, budget edit) requires your explicit approval. |
 | ⚡ **Autonomous loops** | Let the AI research competitors, test ad variants, and generate hypotheses overnight. Review in the morning. |
+
+---
+
+## 📸 Screenshots
+
+Here is a look at OpenAds in action:
+
+<p align="center">
+  <img src="docs/images/screenshot.png" alt="OpenAds Welcome Screen" width="600" />
+</p>
 
 ---
 
