@@ -214,4 +214,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 MIT.
 
-*Built on [Pi](https://github.com/earendil-works/pi) (MIT). Includes tools derived from [adloop](https://github.com/kLOsk/adloop) (MIT) by kLOsk. Marketing skills inspired by [marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT) by Corey Haines.*
+*Built on [Pi](https://github.com/earendil-works/pi) (MIT). Includes tools derived from [adloop](https://github.com/kLOsk/adloop) (MIT) by kLOsk. Marketing skills inspired by [marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT) by Corey Haines. Memory and background automation concepts inspired by [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research.*
