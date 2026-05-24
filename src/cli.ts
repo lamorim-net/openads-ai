@@ -33,7 +33,7 @@ async function main() {
   console.clear();
   const openadsLogo = await renderFilled('OpenAds', {
     palette: 'ocean',
-    font: 'block',
+    font: 'shade',
     letterSpacing: 2
   });
 
