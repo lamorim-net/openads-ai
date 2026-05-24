@@ -79,7 +79,7 @@ To ensure OpenAds never loses its way, we strictly adhere to these principles:
 
 ---
 
-## 🔒 Security & Privacy (Plain English)
+## 🔒 Security & Privacy
 
 We know that handing an AI the keys to your advertising budget can be scary. Here is how we keep you safe:
 
