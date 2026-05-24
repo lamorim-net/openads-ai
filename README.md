@@ -43,29 +43,38 @@ openads setup
 openads
 ```
 
-### Try these commands:
+### Example Commands & What They Do:
+
 - `> Audit my Google Ads account and flag budget waste`
-- `> Write 3 Meta ad headlines for my product`
-- `> /autoresearch:plan` (Run an autonomous iteration loop)
+  *The AI will read your live Google Ads data, identify underperforming keywords or campaigns, and summarize exactly where you are losing money.*
+
+- `> Write 3 Meta ad headlines based on my product context`
+  *The AI looks at the Ideal Customer Profile you provided during setup and writes highly targeted, conversion-focused headlines.*
+
+- `> /autoresearch-plan`
+  *This is a magic command. It tells the AI to work autonomously in the background, analyzing competitors or market trends, and reporting back with a full strategy.*
+
 - `> /write-ad-copy`
+  *Triggers the dedicated copywriting skill, ensuring all copy adheres to platform character limits and best practices.*
 
 ---
 
-## How It Works Under the Hood
+## 🧭 Our Core Principles
 
-OpenAds is a frictionless wrapper built on top of incredible open-source projects:
-
-1. **The Engine**: OpenAds runs on the highly capable [Pi](https://pi.dev) autonomous coding agent framework.
-2. **The Skills**: The marketing knowledge injected into the context is inspired by [marketingskills](https://github.com/coreyhaines31/marketingskills).
-3. **The Tools**: Google Ads integration is powered by a built-in fork of [adloop](https://github.com/kLOsk/adloop). Meta Ads integration connects directly to Meta's official hosted MCP.
+To ensure OpenAds never loses its way, we strictly adhere to these principles:
+1. **Radical Simplicity:** Non-technical marketers must feel at home. No forcing users to learn JSON, prompt engineering, or API rate limits.
+2. **Marketers First, Code Second:** We design features around marketing workflows (audits, copywriting, analysis), not software paradigms.
+3. **Safety by Default:** AI should never spend money or publish campaigns without human approval. Every write operation requires an explicit `Y`.
 
 ---
 
-## Contributing
+## 🚧 Work in Progress & Contributing
 
-We want OpenAds to be the standard open-source tool for AI-assisted marketing. Whether you are a senior media buyer or a Typescript developer, you can help build the future of this project.
+OpenAds is currently in **active development (v0.1.0)**. It works beautifully, but there is so much more to build!
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) to see how you can contribute to the marketing brain or build new MCP integrations.
+We want OpenAds to be the standard open-source tool for AI-assisted marketing. Whether you are a senior media buyer who wants to share a marketing playbook or a developer building new integrations, we need your help.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) to see how you can contribute to the marketing brain (no coding required!) or build new platform integrations.
 
 ---
 
