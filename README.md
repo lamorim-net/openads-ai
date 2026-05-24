@@ -52,32 +52,55 @@ Here is a look at OpenAds in action:
 
 ## ⚡ Quick Start
 
-### 1. Install
+### 👶 New to the terminal? Start here!
 
+OpenAds is a local desktop application that runs in your computer's **Terminal** (a text-based window where you can run commands). Follow these simple steps to get started:
+
+#### Step 1: Install Node.js (Required)
+OpenAds runs on your computer using Node.js. If you don't have it yet, installing it is just like any normal application:
+1. Go to [nodejs.org](https://nodejs.org/) and click the **LTS (Recommended)** button to download it.
+2. Open the downloaded file and run the installer (just click "Next" until it finishes).
+
+#### Step 2: Open your Terminal
+* **Mac:** Press `Cmd + Space` (Spotlight search), type **Terminal**, and press `Enter`.
+* **Windows:** Press the `Windows Key` on your keyboard, type **cmd** (Command Prompt), and press `Enter`.
+
+#### Step 3: Install OpenAds
+Copy the command below, paste it into your Terminal window, and press **Enter**:
 ```bash
 npm install -g openads-ai
 ```
+> 💡 **Permissions Error?** If your Terminal shows a red error about "EACCES" or permissions, copy and paste this command instead:
+> `sudo npm install -g openads-ai` (Mac will ask you to type your computer password and press Enter).
 
-> **Tip:** If you see a permissions error, prefix with `sudo` or [configure npm for global installs](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally).
-
-### 2. Set up (one time)
-
+#### Step 4: Run the Setup Wizard
+Paste this command into your Terminal and press **Enter**:
 ```bash
 openads setup
 ```
+This launches a beautiful, step-by-step interactive setup wizard where you can:
+* **Select your favorite AI model** (Google Gemini, OpenAI, Claude, or a free local model)
+* **Link your ad accounts** (Google Ads, GA4, and/or Meta Ads)
+* **Describe your business** (so the AI writes copy tailored exactly to your brand)
 
-The setup wizard walks you through three things:
-- **Pick your AI model** — choose from Google Gemini, OpenAI, Claude, a local model, or any OpenAI-compatible provider
-- **Connect your accounts** — Google Ads, Google Analytics (GA4), and/or Meta Ads (all optional)
-- **Describe your business** — so the AI can tailor copy and strategy to your product
-
-### 3. Launch
-
+#### Step 5: Start using OpenAds!
+Whenever you want to audit your campaigns or write copy, just open your Terminal, type:
 ```bash
 openads
 ```
+and press **Enter** to open your dashboard.
 
-That's it. You'll see a menu with quick actions. Pick one, or just type your question in plain English.
+---
+
+### 💻 Experienced developer? Quick commands
+
+If you're already familiar with node packages, just run:
+
+```bash
+npm install -g openads-ai
+openads setup
+openads
+```
 
 ---
 
