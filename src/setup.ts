@@ -206,13 +206,21 @@ export async function runSetup() {
       message: 'How would you like to proceed?',
       choices: [
         { name: 'open', message: 'Ready (Open Meta Business Settings in browser)' },
+        { name: 'help', message: 'Help (Open Meta System User Tutorial in browser)' },
         { name: 'skip', message: 'Skip (I already have my token)' }
       ]
     });
 
-    if (metaAction === 'open') {
-      console.log(chalk.gray(`\nOpening browser to https://business.facebook.com/settings/system-users...`));
-      await open('https://business.facebook.com/settings/system-users');
+    if (metaAction === 'help') {
+      console.log(chalk.gray(`\nOpening tutorial at https://developers.facebook.com/docs/business-management-api/guides/system-users...`));
+      await open('https://developers.facebook.com/docs/business-management-api/guides/system-users');
+    }
+
+    if (metaAction === 'open' || metaAction === 'help') {
+      if (metaAction === 'open') {
+        console.log(chalk.gray(`\nOpening browser to https://business.facebook.com/settings/system-users...`));
+        await open('https://business.facebook.com/settings/system-users');
+      }
       console.log(chalk.cyan('Instructions to get your token:'));
       console.log(chalk.gray('1. Create a basic App at developers.facebook.com.'));
       console.log(chalk.gray('2. In Business Settings, go to "Accounts" -> "Apps" and click Add to connect your App.'));
