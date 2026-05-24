@@ -98,8 +98,6 @@ export async function runSetup() {
     }
     let apiKey = '';
     if (provider !== 'local') {
-        // Open browser to API key page
-        console.log(chalk.gray(`\nOpening browser to log in to ${provider === 'other' ? 'your provider' : provider}...`));
         let keyUrl = '';
         if (provider === 'google')
             keyUrl = 'https://aistudio.google.com/app/apikey';
@@ -108,8 +106,23 @@ export async function runSetup() {
         if (provider === 'anthropic')
             keyUrl = 'https://console.anthropic.com/settings/keys';
         if (keyUrl) {
-            await open(keyUrl);
-            console.log(chalk.cyan(`Please create an API key, copy it, and return here.`));
+            const { keyAction } = await enquirer.prompt({
+                type: 'select',
+                name: 'keyAction',
+                message: 'How would you like to get your API key?',
+                choices: [
+                    { name: 'open', message: `Ready (Open ${provider} in browser)` },
+                    { name: 'skip', message: 'Skip (I already have my key)' }
+                ]
+            });
+            if (keyAction === 'open') {
+                console.log(chalk.gray(`\nOpening browser to ${keyUrl}...`));
+                await open(keyUrl);
+                console.log(chalk.cyan('Instructions:'));
+                console.log(chalk.gray('1. Log in or create an account'));
+                console.log(chalk.gray('2. Generate a new API key'));
+                console.log(chalk.gray('3. Copy the key and return here\n'));
+            }
         }
         const { apiKey: key } = await enquirer.prompt({
             type: 'password',
@@ -141,7 +154,22 @@ export async function runSetup() {
         initial: existingConfig.connectGoogle !== undefined ? existingConfig.connectGoogle : false
     });
     if (connectGoogle) {
-        console.log(chalk.gray('\nSee docs/connect-google-ads.md for how to authenticate via `uvx adloop init`'));
+        console.log(chalk.gray('\nTo connect Google Ads, we need to run the adloop authenticator.'));
+        const { googleAction } = await enquirer.prompt({
+            type: 'select',
+            name: 'googleAction',
+            message: 'How would you like to proceed?',
+            choices: [
+                { name: 'run', message: 'Ready (Run Google Ads OAuth)' },
+                { name: 'skip', message: 'Skip (I am already authenticated)' }
+            ]
+        });
+        if (googleAction === 'run') {
+            console.log(chalk.cyan('\nLaunching Google OAuth...'));
+            const { spawnSync } = await import('child_process');
+            spawnSync('uvx', ['adloop', 'init'], { stdio: 'inherit' });
+            console.log('');
+        }
         console.log(chalk.green('✓ Google Ads module enabled.\n'));
     }
     console.log(chalk.gray('─────────────────────────────────────────\n'));
