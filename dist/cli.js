@@ -138,7 +138,8 @@ ${statusPanel}`;
         fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
     }
     // --- END WHITE-LABEL PATCH ---
-    const child = spawn('npx', ['pi', ...piArgs], {
+    const piCliPath = path.resolve(pkgDir, 'node_modules', '@earendil-works', 'pi-coding-agent', 'dist', 'cli.js');
+    const child = spawn('node', [piCliPath, ...piArgs], {
         stdio: 'inherit',
         env
     });
