@@ -148,8 +148,16 @@ ${statusPanel}`;
   }
   if (!settings.quietStartup) {
     settings.quietStartup = true;
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
   }
+
+  // Inject resilient retry settings for strict free-tier rate limits (e.g. Gemini 15 RPM)
+  settings.retry = {
+    maxAttempts: 10,
+    baseDelayMs: 15000,
+    provider: { maxRetryDelayMs: 120000 }
+  };
+
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
   // Inject Meta MCP server if token is present
   if (fs.existsSync(configPath)) {
