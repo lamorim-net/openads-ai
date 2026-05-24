@@ -11,10 +11,11 @@
   AI Command Center for Marketers
 ```
 
-> **Talk to your ad campaigns in plain English.** Connect your Google Ads and Meta accounts, pick your favorite AI model, and let OpenAds handle the analysis while you focus on strategy.
+> **Talk to your ad campaigns in plain English.** Connect your Google Ads, Google Analytics (GA4), and Meta accounts, pick your favorite AI model, and let OpenAds handle the analysis while you focus on strategy.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Google%20Ads-MCP-4285F4?style=flat-square&logo=google-ads" />
+  <img src="https://img.shields.io/badge/Google%20Analytics%204-MCP-E37400?style=flat-square&logo=google-analytics" />
   <img src="https://img.shields.io/badge/Meta%20Ads-MCP-1877F2?style=flat-square&logo=meta" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" />
 </p>
@@ -32,7 +33,7 @@ OpenAds is an **open-source CLI tool** that turns any AI model into a marketing 
 | Feature | What it means for you |
 |---|---|
 | 🧠 **Pre-built marketing skills** | The AI already knows Google Ads best practices, Meta creative formats, CRO frameworks, and copywriting rules. You just ask. |
-| 🔌 **Direct platform access** | Connect your Google Ads and Meta accounts. The AI reads your live data — no more copy-pasting reports. |
+| 🔌 **Direct platform access** | Connect your Google Ads, Google Analytics (GA4), and Meta accounts. The AI reads your live data — no more copy-pasting reports. |
 | 🤖 **Bring your own model** | Use Google Gemini, OpenAI, Claude, or a local model running on your machine. Your choice. |
 | 🛡️ **Nothing goes live without you** | The AI can read freely, but every write operation (campaign change, budget edit) requires your explicit approval. |
 | ⚡ **Autonomous loops** | Let the AI research competitors, test ad variants, and generate hypotheses overnight. Review in the morning. |
@@ -67,7 +68,7 @@ openads setup
 
 The setup wizard walks you through three things:
 - **Pick your AI model** — choose from Google Gemini, OpenAI, Claude, a local model, or any OpenAI-compatible provider
-- **Connect your ad accounts** — Google Ads and/or Meta Ads (both optional)
+- **Connect your accounts** — Google Ads, Google Analytics (GA4), and/or Meta Ads (all optional)
 - **Describe your business** — so the AI can tailor copy and strategy to your product
 
 ### 3. Launch
@@ -187,7 +188,7 @@ This verifies your config file, API keys, platform connections (live token check
 
 ## 🗺️ Roadmap
 
-- [x] Google Ads integration via MCP
+- [x] Google Ads & GA4 integration via MCP
 - [x] Meta Ads integration via MCP
 - [x] Interactive setup wizard with live token verification
 - [x] 12 pre-built skills: Ads, CRO, Copywriting, Analytics, Email, Video, Research, Strategy
