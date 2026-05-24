@@ -34,7 +34,7 @@ async function main() {
   const openadsLogo = await renderFilled('OpenAds', {
     palette: 'ocean',
     font: 'shade',
-    letterSpacing: 2
+    letterSpacing: 4
   });
 
   // Read config to build dynamic status panel
