@@ -51,8 +51,8 @@ async function main() {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       if (config.provider) {
         let cleanProvider = config.provider;
-        if (cleanProvider === 'google/gemini-1.5-pro') {
-          cleanProvider = 'google/gemini-1.5-pro-latest';
+        if (cleanProvider === 'google/gemini-1.5-pro' || cleanProvider === 'google/gemini-1.5-pro-latest') {
+          cleanProvider = 'google/gemini-3.5-flash';
         }
         modelName = chalk.cyan(cleanProvider);
         providerArg = `--model ${cleanProvider}`;
