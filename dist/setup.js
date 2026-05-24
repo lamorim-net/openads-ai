@@ -27,9 +27,9 @@ export async function runSetup() {
         name: 'provider',
         message: 'Which AI Provider would you like to use?',
         choices: [
-            { name: 'google', message: 'Google Gemini' },
+            { name: 'google', message: 'Google (Gemini)' },
             { name: 'openai', message: 'OpenAI (ChatGPT)' },
-            { name: 'anthropic', message: 'Anthropic Claude' },
+            { name: 'anthropic', message: 'Anthropic (Claude)' },
             { name: 'local', message: 'Local AI (Ollama, LM Studio)' },
             { name: 'other', message: 'Other (Groq, OpenRouter, etc.)' }
         ]
