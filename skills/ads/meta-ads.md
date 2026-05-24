@@ -1,3 +1,7 @@
+---
+name: meta-ads
+description: Plan, launch, and optimize Meta (Facebook/Instagram) ad campaigns.
+---
 # Meta Ads Skill
 
 ## When to Use This Skill

@@ -1,3 +1,7 @@
+---
+name: google-ads
+description: Audit and optimize Google Ads campaigns, keywords, and bids.
+---
 # Google Ads Skill
 
 ## When to Use This Skill

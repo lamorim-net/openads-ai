@@ -127,6 +127,90 @@ function getApiKeyEnvVar(provider: string): string {
   return 'OPENAI_API_KEY';
 }
 
+// ─── Skills Browser ─────────────────────────────────────────────────
+
+function showSkills(): void {
+  const skillsDir = path.join(pkgDir, 'skills');
+
+  // Recursively find all .md files
+  function findMarkdown(dir: string): string[] {
+    const results: string[] = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        results.push(...findMarkdown(full));
+      } else if (entry.name.endsWith('.md')) {
+        results.push(full);
+      }
+    }
+    return results;
+  }
+
+  // Extract name and description from frontmatter or first heading
+  function parseMeta(filePath: string): { name: string; description: string; category: string } {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const rel = path.relative(skillsDir, filePath);
+    const parts = rel.split(path.sep);
+    const category = parts.length > 1 ? parts[0] : 'general';
+
+    // Try YAML frontmatter
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    let name = path.basename(filePath, '.md');
+    let description = '';
+
+    if (fmMatch) {
+      const nameMatch = fmMatch[1].match(/name:\s*(.+)/);
+      const descMatch = fmMatch[1].match(/description:\s*(.+)/);
+      if (nameMatch) name = nameMatch[1].trim();
+      if (descMatch) description = descMatch[1].trim();
+    }
+
+    // Fallback: use first heading as name, first paragraph line as description
+    if (!description) {
+      const headingMatch = content.match(/^#\s+(.+)/m);
+      if (headingMatch) name = headingMatch[1].trim();
+      const paraMatch = content.match(/^(?!#|---|\s*$)(.+)/m);
+      if (paraMatch) description = paraMatch[1].trim().slice(0, 80);
+    }
+
+    return { name, description, category };
+  }
+
+  const files = findMarkdown(skillsDir);
+  const skills = files.map(parseMeta).sort((a, b) => a.category.localeCompare(b.category));
+
+  console.log('');
+  console.log(chalk.bold.cyan('  Installed Skills'));
+  console.log(chalk.gray('  ─────────────────────────────────────────────────────'));
+  console.log('');
+
+  // Group by category
+  const grouped = new Map<string, typeof skills>();
+  for (const skill of skills) {
+    const group = grouped.get(skill.category) || [];
+    group.push(skill);
+    grouped.set(skill.category, group);
+  }
+
+  for (const [category, items] of grouped) {
+    console.log(chalk.bold.white(`  ${category.toUpperCase()}`));
+    for (const item of items) {
+      const nameStr = chalk.cyan(item.name.padEnd(22));
+      const descStr = chalk.gray(item.description);
+      console.log(`    ${nameStr} ${descStr}`);
+    }
+    console.log('');
+  }
+
+  console.log(chalk.gray('  ─────────────────────────────────────────────────────'));
+  console.log(`  ${chalk.bold.white('Want more?')} 30+ community skills available at:`);
+  console.log(`  ${chalk.cyan('https://github.com/coreyhaines31/marketingskills')}`);
+  console.log('');
+  console.log(chalk.gray('  To add a skill, drop a .md file into the skills/ folder.'));
+  console.log(chalk.gray('  The agent picks them up automatically — no code needed.'));
+  console.log('');
+}
+
 // ─── Main ───────────────────────────────────────────────────────────
 
 async function main() {
@@ -199,6 +283,7 @@ async function main() {
         { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform ${chalk.gray('(copywriting)')}` },
         { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas automatically ${chalk.gray('(autoresearch)')}` },
         { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan ${chalk.gray('(strategy)')}` },
+        { name: 'skills',       message: `${chalk.cyan('📚')}  Browse available skills` },
         { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
         { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
         { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
@@ -215,6 +300,10 @@ async function main() {
     }
     if (action === 'doctor') {
       await runDoctor();
+      return;
+    }
+    if (action === 'skills') {
+      showSkills();
       return;
     }
 

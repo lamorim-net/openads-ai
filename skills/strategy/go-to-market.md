@@ -1,3 +1,7 @@
+---
+name: go-to-market
+description: Plan launches, budget allocation, and channel strategy.
+---
 # Go-To-Market (GTM) Strategy Skill
 
 ## When to Use This Skill

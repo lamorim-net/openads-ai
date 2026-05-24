@@ -1,3 +1,7 @@
+---
+name: analytics
+description: Set up tracking, analyze traffic, and fix attribution gaps.
+---
 # Analytics Skill
 
 ## When to Use This Skill

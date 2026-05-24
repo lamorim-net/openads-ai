@@ -1,3 +1,7 @@
+---
+name: autoresearch
+description: Autonomously generate, score, and iterate on marketing assets.
+---
 # Autoresearch (Autonomous Improvement Loop)
 
 ## When to Use This Skill
