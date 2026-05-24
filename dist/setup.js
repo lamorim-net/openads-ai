@@ -60,7 +60,7 @@ export async function runSetup() {
     }
     else if (provider === 'other') {
         console.log(chalk.yellow('\n--- Custom AI Setup ---'));
-        console.log('You can connect to almost any AI provider via Pi.');
+        console.log('You can connect to almost any AI provider via OpenAds.');
         console.log('Format: provider/model-id');
         console.log('Examples:');
         console.log(' - Groq: groq/llama-3.1-70b-versatile');
