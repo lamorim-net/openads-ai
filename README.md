@@ -189,7 +189,8 @@ This verifies your config file, API keys, platform connections (live token check
 - [x] Scheduled automations — daily health checks, budget alerts, weekly reports
 - [ ] Telegram bot gateway — talk to your ads from your phone
 - [ ] LinkedIn Ads integration
-- [ ] Pinterest Ads integration
+- [ ] TikTok Ads integration (leveraging their new [TikTok Ads MCP Server](https://digiday.com/media/tiktok-world-ads-mcp-server/))
+- [ ] Pinterest Ads integration (leveraging lessons/patterns from their [MCP Ecosystem](https://medium.com/pinterest-engineering/building-an-mcp-ecosystem-at-pinterest-c3b6b1b9e0f6))
 
 ---
 
