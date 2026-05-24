@@ -147,9 +147,17 @@ openads schedule
 | 📋 Weekly performance report | Every Monday at 9 AM |
 | ⏰ Custom (describe in plain English) | You choose |
 
-Reports are saved to `~/.openads/reports/`. Manage your schedules:
+Reports are saved to `~/.openads/reports/` in both Markdown and premium HTML dashboard formats. You can view, list, and open your reports directly:
 
 ```bash
+openads report            # List all generated reports
+openads report [name]     # Open a beautiful HTML dashboard in your browser
+```
+
+Manage your schedules:
+
+```bash
+openads schedule          # Open the schedule manager
 openads schedule list     # See active schedules
 openads schedule remove   # Remove a schedule
 ```

@@ -11,7 +11,7 @@ import gradient from 'gradient-string';
 import ora from 'ora';
 import { runSetup } from './setup.js';
 import { runDoctor } from './doctor.js';
-import { runScheduleManager, runScheduledTask } from './schedule.js';
+import { runScheduleManager, runScheduledTask, openReportInBrowser, listReports } from './schedule.js';
 import enquirer from 'enquirer';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -250,6 +250,17 @@ async function main() {
 
   if (args[0] === 'run-schedule') {
     await runScheduledTask(args[1]);
+    return;
+  }
+
+  if (args[0] === 'report') {
+    if (args[1] === 'list') {
+      listReports();
+    } else if (args[1]) {
+      await openReportInBrowser(args[1]);
+    } else {
+      listReports();
+    }
     return;
   }
 

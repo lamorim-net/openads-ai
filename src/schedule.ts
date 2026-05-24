@@ -5,6 +5,8 @@ import path from 'path';
 import os from 'os';
 import { spawnSync } from 'child_process';
 import gradient from 'gradient-string';
+import open from 'open';
+import { compileHtmlReport } from './report-template.js';
 
 const openadsGradient = gradient(['#00d2ff', '#3a7bd5', '#00d2ff']);
 const CONFIG_DIR = path.join(os.homedir(), '.openads');
@@ -262,12 +264,15 @@ export async function runScheduledTask(name: string): Promise<void> {
 
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-  // Print header
+  // Print header and accumulate markdown
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  console.log(`# OpenAds Scheduled Report: ${schedule.name}`);
-  console.log(`_Generated: ${now}_\n`);
-  console.log(`**Prompt:** ${schedule.prompt}\n`);
-  console.log('---\n');
+  let fullMarkdown = '';
+  fullMarkdown += `# OpenAds Scheduled Report: ${schedule.name}\n`;
+  fullMarkdown += `_Generated: ${now}_\n\n`;
+  fullMarkdown += `**Prompt:** ${schedule.prompt}\n\n`;
+  fullMarkdown += '---\n\n';
+
+  console.log(fullMarkdown.trim() + '\n');
 
   // Find the pi CLI
   const pkgDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -302,8 +307,22 @@ export async function runScheduledTask(name: string): Promise<void> {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
-  if (result.stdout) console.log(result.stdout);
-  if (result.stderr) console.error(result.stderr);
+  if (result.stdout) {
+    console.log(result.stdout);
+    fullMarkdown += result.stdout;
+  }
+  if (result.stderr) {
+    console.error(result.stderr);
+  }
+
+  // Compile and save the HTML report
+  try {
+    const reportHtmlFile = path.join(REPORTS_DIR, `${schedule.name}-latest.html`);
+    const htmlContent = compileHtmlReport(schedule.name, fullMarkdown);
+    fs.writeFileSync(reportHtmlFile, htmlContent, 'utf8');
+  } catch (err: any) {
+    console.error(`Failed to generate HTML report: ${err.message}`);
+  }
 }
 
 // ─── Interactive Schedule Setup ──────────────────────────────────────
@@ -340,6 +359,11 @@ export async function runScheduleManager(subcommand?: string): Promise<void> {
     message: `${chalk.gray('🗑️')}   Remove a schedule`,
   });
 
+  presetChoices.push({
+    name: 'view-reports',
+    message: `${chalk.green('📊')}  View latest HTML reports in browser`,
+  });
+
   const { action } = await enquirer.prompt<{ action: string }>({
     type: 'select',
     name: 'action',
@@ -349,6 +373,7 @@ export async function runScheduleManager(subcommand?: string): Promise<void> {
 
   if (action === 'list') return listSchedules();
   if (action === 'remove') return removeSchedule();
+  if (action === 'view-reports') return chooseAndOpenReport();
 
   let schedule: SavedSchedule;
 
@@ -485,4 +510,85 @@ async function removeSchedule(): Promise<void> {
   saveSchedules(updated);
 
   console.log(chalk.green(`\n✓ Schedule "${name}" removed.\n`));
+}
+
+export async function openReportInBrowser(name: string): Promise<void> {
+  const reportHtmlFile = path.join(REPORTS_DIR, `${name}-latest.html`);
+  if (!fs.existsSync(reportHtmlFile)) {
+    // If HTML doesn't exist but MD does, let's compile it on the fly!
+    const reportMdFile = path.join(REPORTS_DIR, `${name}-latest.md`);
+    if (fs.existsSync(reportMdFile)) {
+      const mdContent = fs.readFileSync(reportMdFile, 'utf8');
+      const htmlContent = compileHtmlReport(name, mdContent);
+      fs.writeFileSync(reportHtmlFile, htmlContent, 'utf8');
+    } else {
+      console.error(chalk.red(`\n✗ Report for "${name}" not found. Run the schedule first or select another report.\n`));
+      return;
+    }
+  }
+  console.log(chalk.cyan(`\nOpening HTML report for "${name}" in your default browser...`));
+  await open(reportHtmlFile);
+}
+
+async function chooseAndOpenReport(): Promise<void> {
+  const schedules = loadSchedules();
+  if (schedules.length === 0) {
+    console.log(chalk.yellow('\n  No active schedules. Run `openads schedule` to create one.\n'));
+    return;
+  }
+
+  // Find all schedules that have reports
+  const choices = schedules.map(s => {
+    const reportMdFile = path.join(REPORTS_DIR, `${s.name}-latest.md`);
+    const hasReport = fs.existsSync(reportMdFile);
+    return {
+      name: s.name,
+      message: `${s.name} ${chalk.gray(`(${s.description})`)} ${hasReport ? chalk.green('[Report Available]') : chalk.red('[No Report Yet]')}`,
+      disabled: !hasReport,
+    };
+  });
+
+  if (choices.every(c => c.disabled)) {
+    console.log(chalk.yellow('\n  No reports have been generated yet. Please wait for schedules to run.\n'));
+    return;
+  }
+
+  const { name } = await enquirer.prompt<{ name: string }>({
+    type: 'select',
+    name: 'name',
+    message: 'Select a report to open:',
+    choices: choices.filter(c => !c.disabled),
+  });
+
+  await openReportInBrowser(name);
+}
+
+export function listReports(): void {
+  ensureDirs();
+  const files = fs.readdirSync(REPORTS_DIR);
+  const reports = files.filter(f => f.endsWith('-latest.md'));
+
+  if (reports.length === 0) {
+    console.log(chalk.yellow('\n  No reports found in your reports directory. Please wait for schedules to run.\n'));
+    return;
+  }
+
+  console.log(chalk.bold.cyan('\n  Generated Reports'));
+  console.log(chalk.gray('  ──────────────────────────────────────────────────────────────────────────'));
+
+  for (const file of reports) {
+    const filePath = path.join(REPORTS_DIR, file);
+    const stats = fs.statSync(filePath);
+    const name = file.replace('-latest.md', '');
+    const date = stats.mtime.toISOString().slice(0, 19).replace('T', ' ');
+    const sizeKb = (stats.size / 1024).toFixed(1);
+    
+    // Check if HTML version exists
+    const htmlExists = fs.existsSync(path.join(REPORTS_DIR, `${name}-latest.html`));
+    const formatSupport = htmlExists ? chalk.green('MD + HTML') : chalk.yellow('MD Only');
+
+    console.log(`  ${chalk.cyan(name.padEnd(25))} ${chalk.white(`${sizeKb} KB`)}   ${chalk.gray(date)}   ${formatSupport}`);
+  }
+  console.log(chalk.gray(`\n  Reports saved to: ${REPORTS_DIR}`));
+  console.log(chalk.gray(`  To view a report in your browser, run: ${chalk.white('openads report [name]')}\n`));
 }
