@@ -214,12 +214,11 @@ export async function runSetup() {
       console.log(chalk.gray(`\nOpening browser to https://business.facebook.com/settings/system-users...`));
       await open('https://business.facebook.com/settings/system-users');
       console.log(chalk.cyan('Instructions to get your token:'));
-      console.log(chalk.gray('1. In the browser, click "Add" to create a new System User (Role: Employee).'));
-      console.log(chalk.gray('2. Click "Add Assets", select your Ad Accounts, and grant "Manage Campaigns" permission.'));
-      console.log(chalk.gray('3. Under "Add Assets" -> "Apps", assign a Meta Developer App (Create a basic one at developers.facebook.com if needed).'));
-      console.log(chalk.gray('4. Click the "Generate New Token" button and select your App from the dropdown.'));
-      console.log(chalk.gray('5. Check the boxes for "ads_read" and "ads_management" permissions.'));
-      console.log(chalk.gray('6. Click Generate, copy the long token string, and paste it below.\n'));
+      console.log(chalk.gray('1. Create a basic App at developers.facebook.com.'));
+      console.log(chalk.gray('2. In Business Settings, go to "Accounts" -> "Apps" and click Add to connect your App.'));
+      console.log(chalk.gray('3. Go to "Users" -> "System Users" and Add a new user (Role: Employee).'));
+      console.log(chalk.gray('4. Click "Add Assets". Under Apps, assign your App. Under Ad Accounts, assign your Ad Accounts.'));
+      console.log(chalk.gray('5. Click "Generate New Token", select your App, check "ads_read" and "ads_management", and click Generate.'));
     }
 
     const metaAnswers = await enquirer.prompt<{ metaToken: string }>({
