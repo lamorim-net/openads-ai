@@ -19,6 +19,10 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" />
 </p>
 
+<p align="center">
+  <img src="docs/images/screenshot.png" alt="OpenAds Welcome Screen" width="600" />
+</p>
+
 ---
 
 ## What is OpenAds?
