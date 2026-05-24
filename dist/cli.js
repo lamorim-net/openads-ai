@@ -98,6 +98,15 @@ ${statusPanel}`;
         ...process.env,
         NODE_NO_WARNINGS: '1'
     };
+    if (fs.existsSync(configPath)) {
+        try {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if (config.localBaseUrl) {
+                env.OPENAI_BASE_URL = config.localBaseUrl;
+            }
+        }
+        catch (e) { }
+    }
     // --- WHITE-LABEL PATCH ---
     // 1. Force Pi to adopt OpenAds branding and directory
     const piPkgPath = path.resolve(pkgDir, 'node_modules', '@earendil-works', 'pi-coding-agent', 'package.json');

@@ -25,73 +25,86 @@ export async function runSetup() {
     let { provider } = await enquirer.prompt({
         type: 'select',
         name: 'provider',
-        message: 'Which provider would you like to use?',
+        message: 'Which AI Provider would you like to use?',
         choices: [
-            { name: 'anthropic', message: 'Anthropic Claude' },
-            { name: 'openai', message: 'OpenAI' },
             { name: 'google', message: 'Google Gemini' },
-            { name: 'other', message: 'Other (138+ models available via Pi)' }
+            { name: 'openai', message: 'OpenAI (ChatGPT)' },
+            { name: 'anthropic', message: 'Anthropic Claude' },
+            { name: 'local', message: 'Local AI (Ollama, LM Studio)' },
+            { name: 'other', message: 'Other (Groq, OpenRouter, etc.)' }
         ]
     });
     let customModel = '';
-    if (provider === 'other') {
-        // Import AutoComplete dynamically to avoid typing issues with basic prompt
-        const { AutoComplete } = enquirer;
-        const prompt = new AutoComplete({
-            name: 'model',
-            message: 'Search for a model (type to filter):',
-            limit: 10,
-            choices: [
-                'groq/llama3-70b-8192',
-                'groq/llama3-8b-8192',
-                'groq/mixtral-8x7b-32768',
-                'together/meta-llama/Llama-3-70b-chat-hf',
-                'together/meta-llama/Llama-3-8b-chat-hf',
-                'together/mistralai/Mixtral-8x22B-Instruct-v0.1',
-                'mistral/mistral-large-latest',
-                'mistral/open-mixtral-8x22b',
-                'openrouter/anthropic/claude-3.5-sonnet',
-                'openrouter/openai/gpt-4o',
-                'openrouter/meta-llama/llama-3-70b-instruct',
-                'anthropic/claude-3-opus-20240229',
-                'anthropic/claude-3-haiku-20240307',
-                'openai/gpt-4-turbo',
-                'openai/gpt-3.5-turbo',
-                'google/gemini-1.5-flash',
-                'ollama/llama3',
-                'ollama/mistral'
-            ]
-        });
-        customModel = await prompt.run();
-    }
-    // Open browser to API key page
-    console.log(chalk.gray(`\nOpening browser to log in to ${provider === 'other' ? 'your provider' : provider}...`));
-    let keyUrl = '';
-    if (provider === 'google')
-        keyUrl = 'https://aistudio.google.com/app/apikey';
-    if (provider === 'openai')
-        keyUrl = 'https://platform.openai.com/api-keys';
-    if (provider === 'anthropic')
-        keyUrl = 'https://console.anthropic.com/settings/keys';
-    if (keyUrl) {
-        await open(keyUrl);
-        console.log(chalk.cyan(`Please create an API key, copy it, and return here.`));
+    let localModelName = '';
+    let localBaseUrl = '';
+    if (provider === 'local') {
+        console.log(chalk.yellow('\n--- Local AI Setup ---'));
+        console.log('You can run models 100% offline using tools like Ollama or LM Studio.');
+        console.log('First, make sure your local AI server is running.\n');
+        const localAnswers = await enquirer.prompt([
+            {
+                type: 'input',
+                name: 'localModelName',
+                message: 'What is the exact name of your local model? (e.g., llama3, mistral)',
+                initial: 'llama3'
+            },
+            {
+                type: 'input',
+                name: 'localBaseUrl',
+                message: 'What is your local API endpoint?',
+                initial: 'http://localhost:11434/v1'
+            }
+        ]);
+        localModelName = localAnswers.localModelName;
+        localBaseUrl = localAnswers.localBaseUrl;
     }
     else if (provider === 'other') {
-        console.log(chalk.cyan(`Please locate your API key for ${customModel.split('/')[0]} and paste it below.`));
+        console.log(chalk.yellow('\n--- Custom AI Setup ---'));
+        console.log('You can connect to almost any AI provider via Pi.');
+        console.log('Format: provider/model-id');
+        console.log('Examples:');
+        console.log(' - Groq: groq/llama-3.1-70b-versatile');
+        console.log(' - OpenRouter: openrouter/anthropic/claude-3-opus\n');
+        const otherAnswers = await enquirer.prompt({
+            type: 'input',
+            name: 'customModel',
+            message: 'Enter your custom provider/model:'
+        });
+        customModel = otherAnswers.customModel;
     }
-    const { apiKey } = await enquirer.prompt({
-        type: 'password',
-        name: 'apiKey',
-        message: provider === 'other' ? `Paste your API key for ${customModel.split('/')[0]}:` : `Paste your ${provider} API key:`,
-        validate: (value) => {
-            if (!value.trim()) {
-                return 'API key cannot be empty.';
-            }
-            return true;
+    let apiKey = '';
+    if (provider !== 'local') {
+        // Open browser to API key page
+        console.log(chalk.gray(`\nOpening browser to log in to ${provider === 'other' ? 'your provider' : provider}...`));
+        let keyUrl = '';
+        if (provider === 'google')
+            keyUrl = 'https://aistudio.google.com/app/apikey';
+        if (provider === 'openai')
+            keyUrl = 'https://platform.openai.com/api-keys';
+        if (provider === 'anthropic')
+            keyUrl = 'https://console.anthropic.com/settings/keys';
+        if (keyUrl) {
+            await open(keyUrl);
+            console.log(chalk.cyan(`Please create an API key, copy it, and return here.`));
         }
-    });
-    console.log(chalk.green(`\n✓ Key valid — ${provider === 'other' ? customModel : provider} connected.\n`));
+        const { apiKey: key } = await enquirer.prompt({
+            type: 'password',
+            name: 'apiKey',
+            message: provider === 'other' ? `Paste your API key for ${customModel.split('/')[0]}:` : `Paste your ${provider} API key:`,
+            validate: (value) => {
+                if (!value.trim()) {
+                    return 'API key cannot be empty.';
+                }
+                return true;
+            }
+        });
+        apiKey = key;
+        console.log(chalk.green(`\n✓ Key valid — ${provider === 'other' ? customModel : provider} connected.\n`));
+    }
+    else {
+        apiKey = 'dummy-key';
+        console.log(chalk.green(`\n✓ Local AI configured — ready to connect to ${localBaseUrl}.\n`));
+    }
     console.log(chalk.gray('─────────────────────────────────────────\n'));
     // Step 2: Google Ads
     console.log(chalk.cyan('Step 2/4: Connect Google Ads (optional)\n'));
@@ -138,10 +151,13 @@ export async function runSetup() {
         finalModel = 'openai/gpt-4o';
     if (provider === 'other')
         finalModel = customModel;
+    if (provider === 'local')
+        finalModel = `openai/${localModelName}`;
     // Save basic config
     const config = {
         provider: finalModel,
         apiKey,
+        localBaseUrl,
         connectGoogle,
         connectMeta,
         productContext
