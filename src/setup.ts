@@ -167,6 +167,27 @@ export async function runSetup() {
   });
 
   if (connectMeta) {
+    console.log(chalk.gray('\nTo connect Meta, you need a System User Access Token.'));
+    
+    const { metaAction } = await enquirer.prompt<{ metaAction: string }>({
+      type: 'select',
+      name: 'metaAction',
+      message: 'How would you like to proceed?',
+      choices: [
+        { name: 'open', message: 'Ready (Open Meta Business Settings in browser)' },
+        { name: 'skip', message: 'Skip (I already have my token)' }
+      ]
+    });
+
+    if (metaAction === 'open') {
+      console.log(chalk.gray(`\nOpening browser to https://business.facebook.com/settings/system-users...`));
+      await open('https://business.facebook.com/settings/system-users');
+      console.log(chalk.cyan('Instructions:'));
+      console.log(chalk.gray('1. Create or select a System User'));
+      console.log(chalk.gray('2. Assign your Ad Accounts to the user'));
+      console.log(chalk.gray('3. Click "Generate New Token" (Check ads_read and ads_management)\n'));
+    }
+
     const metaAnswers = await enquirer.prompt<{ metaToken: string }>({
       type: 'password',
       name: 'metaToken',
