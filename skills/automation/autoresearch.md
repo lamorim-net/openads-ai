@@ -19,6 +19,11 @@ The core philosophy of Autoresearch is:
 
 When running the loop, execute at least **3 full cycles** autonomously before presenting the final results. Do not stop to prompt the user between cycles.
 
+### Phase 0: Validate Goal & Metric (MUST NOT GUESS)
+- Before you begin any loop cycles, you MUST verify that the user's specific **Goal** (what assets to test, e.g. headlines, landing page copy, ad hook variants) and **Metric** (how to score them) have been explicitly defined in this conversation.
+- If they are not yet explicitly provided or confirmed by the user in this session, you MUST halt immediately, present 3 concrete, inspiring examples of goals and metrics, and ask the user to input their custom Goal and Metric before launching the loop.
+- **NEVER** guess a goal/metric or automatically proceed with loop cycles on a generic assumption!
+
 ### Phase 1: Ingest Fuel & Initialize
 - Quickly review `product-marketing.md` and any provided prior experiment data (like a CSV or campaign performance logs).
 - **CONCISE INGESTION RULE**: Extract 3-5 high-level patterns of what worked and what failed. Do not list individual rows or campaigns one-by-one.
