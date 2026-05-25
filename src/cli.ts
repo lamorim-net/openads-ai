@@ -424,6 +424,7 @@ async function main() {
 
   if (config.localBaseUrl) {
     env.OPENAI_BASE_URL = config.localBaseUrl;
+    env.OPENAI_API_KEY = env.OPENAI_API_KEY || 'sk-local-ai-key-placeholder';
   }
 
   // ─── White-Label Patch ──────────────────────────────────────────

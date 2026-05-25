@@ -287,7 +287,10 @@ export async function runScheduledTask(name: string): Promise<void> {
     else if (config.provider.startsWith('anthropic/')) env.ANTHROPIC_API_KEY = config.apiKey;
     else env.OPENAI_API_KEY = config.apiKey;
   }
-  if (config.localBaseUrl) env.OPENAI_BASE_URL = config.localBaseUrl;
+  if (config.localBaseUrl) {
+    env.OPENAI_BASE_URL = config.localBaseUrl;
+    env.OPENAI_API_KEY = env.OPENAI_API_KEY || 'sk-local-ai-key-placeholder';
+  }
 
   const skillsDir = path.resolve(pkgDir, 'skills');
   const contextDir = path.join(CONFIG_DIR, 'context');
