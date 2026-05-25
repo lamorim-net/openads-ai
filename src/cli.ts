@@ -456,44 +456,138 @@ async function main() {
         }
         finalArgs = [auditPrompt];
       } else if (action === 'autoresearch') {
-        // ── Autoresearch Submenu ─────────────────────────────────
-        console.log();
-        const { arAction } = await enquirer.prompt<{ arAction: string }>({
-          type: 'select',
-          name: 'arAction',
-          message: chalk.bold('🔬 Autoresearch — What do you want to do?'),
-          choices: [
-            // DISCOVER
-            { name: 'ar-plan',     message: `${chalk.yellow('── DISCOVER ──────────────────────────')}` },
-            { name: 'ar-plan',     message: `${chalk.cyan('📋')}  Plan my experiment              ${chalk.gray('Figure out what to test & how to measure')}` },
-            { name: 'ar-improve',  message: `${chalk.cyan('🧠')}  Research ICP & growth            ${chalk.gray('Find opportunities from ICP, competitors, market')}` },
-            { name: 'ar-learn',    message: `${chalk.cyan('💡')}  Learn from the market            ${chalk.gray('Competitive intel — analyze what others do')}` },
-            // GENERATE
-            { name: 'ar-core',     message: `${chalk.green('── GENERATE ──────────────────────────')}` },
-            { name: 'ar-core',     message: `${chalk.cyan('🎯')}  Generate new hypotheses          ${chalk.gray('Create & iterate on headlines, copy, pages, hooks')}` },
-            // VALIDATE
-            { name: 'ar-predict',  message: `${chalk.blue('── VALIDATE ──────────────────────────')}` },
-            { name: 'ar-predict',  message: `${chalk.cyan('🔮')}  Get expert predictions           ${chalk.gray('5 marketing experts debate your idea')}` },
-            { name: 'ar-probe',    message: `${chalk.cyan('🔍')}  Stress-test my brief             ${chalk.gray('8 personas interrogate your campaign plan')}` },
-            { name: 'ar-reason',   message: `${chalk.cyan('⚖️')}   Debate a strategy call           ${chalk.gray('Adversarial debate: broad vs niche, video vs static')}` },
-            { name: 'ar-scenario', message: `${chalk.cyan('🎭')}  Run what-if scenarios            ${chalk.gray('Competitor copies us? Algorithm changes? Budget cuts?')}` },
-            // ANALYZE
-            { name: 'ar-evals',    message: `${chalk.magenta('── ANALYZE ───────────────────────────')}` },
-            { name: 'ar-evals',    message: `${chalk.cyan('📊')}  Analyze past results             ${chalk.gray('Trends, plateaus, patterns in experiment data')}` },
-            { name: 'ar-debug',    message: `${chalk.cyan('🐛')}  Debug underperformance           ${chalk.gray('Why is this campaign/page/funnel failing?')}` },
-            // FIX
-            { name: 'ar-fix',      message: `${chalk.red('── FIX ───────────────────────────────')}` },
-            { name: 'ar-fix',      message: `${chalk.cyan('🔨')}  Fix issues one-by-one            ${chalk.gray('Tracking, compliance, character limits, branding')}` },
-            { name: 'ar-security', message: `${chalk.cyan('🛡️')}   Brand safety audit               ${chalk.gray('Trademark, regulatory, misleading claims')}` },
-            // SHIP
-            { name: 'ar-ship',     message: `${chalk.cyan('── SHIP ──────────────────────────────')}` },
-            { name: 'ar-ship',     message: `${chalk.cyan('🚀')}  Prepare assets to ship           ${chalk.gray('Format for platform specs, deployment brief, QA')}` },
-            // BACK
-            { name: 'ar-back',     message: `${chalk.gray('←')}   Back to main menu` },
-          ]
-        });
+        let inArMenu = true;
+        let arAction = '';
 
-        if (arAction === 'ar-back') {
+        while (inArMenu) {
+          console.clear();
+          console.log('');
+          console.log(openadsGradient(LOGO));
+          console.log('');
+          console.log(
+            boxen(statusLines, {
+              padding: { top: 1, bottom: 1, left: 2, right: 2 },
+              margin: { top: 0, bottom: 1, left: 2, right: 2 },
+              borderStyle: 'round',
+              borderColor: 'cyan',
+              dimBorder: true,
+            })
+          );
+
+          const { arPhase } = await enquirer.prompt<{ arPhase: string }>({
+            type: 'select',
+            name: 'arPhase',
+            message: chalk.bold('🔬 Autoresearch — Select a Phase:'),
+            choices: [
+              { name: 'discover', message: `${chalk.yellow('📋 Discover')}  - Plan experiments, research ICP, & competitive intel` },
+              { name: 'generate', message: `${chalk.green('🎯 Generate')}  - Launch the core autonomous loop to test ideas` },
+              { name: 'validate', message: `${chalk.blue('🔮 Validate')}  - Expert predictions, stress-tests, & debates` },
+              { name: 'analyze',  message: `${chalk.magenta('📊 Analyze')}   - Inspect past performance & debug drops` },
+              { name: 'fix',      message: `${chalk.red('🔨 Fix')}       - Fix issues & run brand safety audits` },
+              { name: 'ship',     message: `${chalk.cyan('🚀 Ship')}      - Format final assets & build deployment briefs` },
+              { name: 'back',     message: `${chalk.gray('← Back to main menu')}` },
+            ]
+          });
+
+          if (arPhase === 'back') {
+            break;
+          }
+
+          if (arPhase === 'discover') {
+            const res = await enquirer.prompt<{ opt: string }>({
+              type: 'select',
+              name: 'opt',
+              message: chalk.bold('📋 Discover Options:'),
+              choices: [
+                { name: 'ar-plan',    message: `${chalk.cyan('📋')} Plan my experiment       - Figure out what to test & how to measure` },
+                { name: 'ar-improve', message: `${chalk.cyan('🧠')} Research ICP & growth    - Find growth opportunities from ICP & market` },
+                { name: 'ar-learn',   message: `${chalk.cyan('💡')} Learn from the market    - Competitive intel on pages & copy` },
+                { name: 'back',       message: `${chalk.gray('← Back to phases')}` },
+              ]
+            });
+            if (res.opt !== 'back') {
+              arAction = res.opt;
+              inArMenu = false;
+            }
+          } else if (arPhase === 'generate') {
+            const res = await enquirer.prompt<{ opt: string }>({
+              type: 'select',
+              name: 'opt',
+              message: chalk.bold('🎯 Generate Options:'),
+              choices: [
+                { name: 'ar-core',    message: `${chalk.cyan('🎯')} Generate new hypotheses  - Run core loop to generate & score ideas` },
+                { name: 'back',       message: `${chalk.gray('← Back to phases')}` },
+              ]
+            });
+            if (res.opt !== 'back') {
+              arAction = res.opt;
+              inArMenu = false;
+            }
+          } else if (arPhase === 'validate') {
+            const res = await enquirer.prompt<{ opt: string }>({
+              type: 'select',
+              name: 'opt',
+              message: chalk.bold('🔮 Validate Options:'),
+              choices: [
+                { name: 'ar-predict',  message: `${chalk.cyan('🔮')} Get expert predictions - 5 expert personas debate your idea` },
+                { name: 'ar-probe',    message: `${chalk.cyan('🔍')} Stress-test my brief   - 8 personas stress-test your strategy` },
+                { name: 'ar-reason',   message: `${chalk.cyan('⚖️')}  Debate a strategy call - Adversarial debate on key binary calls` },
+                { name: 'ar-scenario', message: `${chalk.cyan('🎭')} Run what-if scenarios   - Stress-test plans against disruptions` },
+                { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
+              ]
+            });
+            if (res.opt !== 'back') {
+              arAction = res.opt;
+              inArMenu = false;
+            }
+          } else if (arPhase === 'analyze') {
+            const res = await enquirer.prompt<{ opt: string }>({
+              type: 'select',
+              name: 'opt',
+              message: chalk.bold('📊 Analyze Options:'),
+              choices: [
+                { name: 'ar-evals',    message: `${chalk.cyan('📊')} Analyze past results    - Find trends & plateaus in experiment data` },
+                { name: 'ar-debug',    message: `${chalk.cyan('🐛')} Debug underperformance  - Root cause diagnostic for drops` },
+                { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
+              ]
+            });
+            if (res.opt !== 'back') {
+              arAction = res.opt;
+              inArMenu = false;
+            }
+          } else if (arPhase === 'fix') {
+            const res = await enquirer.prompt<{ opt: string }>({
+              type: 'select',
+              name: 'opt',
+              message: chalk.bold('🔨 Fix Options:'),
+              choices: [
+                { name: 'ar-fix',      message: `${chalk.cyan('🔨')} Fix issues one-by-one   - Crush character limits, pixel breaks` },
+                { name: 'ar-security', message: `${chalk.cyan('🛡️')} Brand safety audit      - Reg (FTC/GDPR), trademark compliance` },
+                { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
+              ]
+            });
+            if (res.opt !== 'back') {
+              arAction = res.opt;
+              inArMenu = false;
+            }
+          } else if (arPhase === 'ship') {
+            const res = await enquirer.prompt<{ opt: string }>({
+              type: 'select',
+              name: 'opt',
+              message: chalk.bold('🚀 Ship Options:'),
+              choices: [
+                { name: 'ar-ship',     message: `${chalk.cyan('🚀')} Prepare assets to ship  - Format for platforms & build deployment brief` },
+                { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
+              ]
+            });
+            if (res.opt !== 'back') {
+              arAction = res.opt;
+              inArMenu = false;
+            }
+          }
+        }
+
+        if (!arAction) {
           continue;
         }
 
