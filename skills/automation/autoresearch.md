@@ -20,8 +20,9 @@ The core philosophy of Autoresearch is:
 When running the loop, execute at least **3 full cycles** autonomously before presenting the final results. Do not stop to prompt the user between cycles.
 
 ### Phase 0: Validate Goal & Metric (MUST NOT GUESS)
-- Before you begin any loop cycles, you MUST verify that the user's specific **Goal** (what assets to test, e.g. headlines, landing page copy, ad hook variants) and **Metric** (how to score them) have been explicitly defined in this conversation.
-- If they are not yet explicitly provided or confirmed by the user in this session, you MUST halt immediately, present 3 concrete, inspiring examples of goals and metrics, and ask the user to input their custom Goal and Metric before launching the loop.
+- Before you begin any loop cycles, you MUST check if there is an active experiment plan saved on disk in `~/.openads/active-experiment.json`.
+- If the file `~/.openads/active-experiment.json` exists, read it immediately! Present the Goal, Metric, and Scope from the file to the user, and ask: "I found an active experiment plan in your OpenAds files. Goal: [Goal], Metric: [Metric]. Would you like to run the autonomous loop on this config? (Y/N) or define a new one?"
+- If the file does not exist, and the user hasn't explicitly specified their target Goal and Metric in their message, you MUST halt immediately, present 3 concrete, inspiring examples of B2B/Shopify goals and metrics, and ask the user to input their custom Goal and Metric before launching the loop.
 - **NEVER** guess a goal/metric or automatically proceed with loop cycles on a generic assumption!
 
 ### Phase 1: Ingest Fuel & Initialize

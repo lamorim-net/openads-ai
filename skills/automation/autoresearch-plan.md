@@ -46,6 +46,7 @@ At the end of the interactive planning sequence, output a beautiful **Experiment
 ```
 
 ### Next Action Trigger
-Conclude by asking the user directly:
+- **AUTOMATIC STATE PERSISTENCE**: You MUST automatically save this validated configuration as a JSON file to `~/.openads/active-experiment.json` so that the core loop (`/autoresearch` or `ar-core`) can read and execute it across different terminal sessions!
+- Conclude by asking the user directly:
 **"Would you like me to start the autonomous loop now? (Y/N)"**
 - If they say **Yes**, transition directly into executing the core `/autoresearch` loop using this configuration.
