@@ -469,11 +469,10 @@ async function main() {
     };
   }
 
-  // Inject Meta MCP server if token is present
+  // Inject Meta MCP server (remote SSE server) if token is present
   if (config.metaToken) {
     settings.mcpServers['meta-ads'] = {
-      command: useRtk ? 'rtk' : 'npx',
-      args: useRtk ? ['npx', '-y', '@meta/mcp-server'] : ['-y', '@meta/mcp-server'],
+      url: 'https://mcp.facebook.com/ads/sse',
       env: { META_ACCESS_TOKEN: config.metaToken }
     };
   }
