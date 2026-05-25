@@ -855,7 +855,7 @@ async function main() {
       providers: {
         "local-ai": {
           baseUrl: config.localBaseUrl,
-          api: "openai-chat",
+          api: "openai-completions",
           apiKey: "local-key-placeholder",
           compat: {
             supportsDeveloperRole: false,
