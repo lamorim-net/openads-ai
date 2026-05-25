@@ -295,9 +295,13 @@ export async function runScheduledTask(name: string): Promise<void> {
   const skillsDir = path.resolve(pkgDir, 'skills');
   const contextDir = path.join(CONFIG_DIR, 'context');
 
+  const cleanModel = config.provider;
+  const isLocal = !!config.localBaseUrl;
+  const modelIdForPi = isLocal && cleanModel.includes('/') ? cleanModel.split('/')[1] : cleanModel;
+
   const args = [
     piCliPath,
-    '--model', config.provider,
+    '--model', modelIdForPi,
     '--skill', skillsDir,
     ...(fs.existsSync(contextDir) ? ['--skill', contextDir] : []),
     '--print',

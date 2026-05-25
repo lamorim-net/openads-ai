@@ -393,7 +393,9 @@ async function main() {
   const piArgsRaw: string[] = [];
 
   // Model flag
-  piArgsRaw.push('--model', cleanProvider);
+  const isLocal = !!config.localBaseUrl;
+  const modelIdForPi = isLocal && cleanProvider.includes('/') ? cleanProvider.split('/')[1] : cleanProvider;
+  piArgsRaw.push('--model', modelIdForPi);
 
   // Skills directories
   const skillsDir = path.join(pkgDir, 'skills');
@@ -472,6 +474,36 @@ async function main() {
   }
 
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+
+  // ─── Write models.json for Local AI ─────────────────────────────
+  const modelsPath = path.join(agentDir, 'models.json');
+  if (isLocal) {
+    const modelsConfig = {
+      providers: {
+        "local-ai": {
+          baseUrl: config.localBaseUrl,
+          api: "openai-completions",
+          apiKey: "local-key-placeholder",
+          compat: {
+            supportsDeveloperRole: false,
+            supportsReasoningEffort: false
+          },
+          models: [
+            {
+              id: modelIdForPi,
+              name: `${modelIdForPi} (Local)`
+            }
+          ]
+        }
+      }
+    };
+    fs.writeFileSync(modelsPath, JSON.stringify(modelsConfig, null, 2));
+  } else {
+    // If not local, remove custom models.json to avoid conflicts
+    if (fs.existsSync(modelsPath)) {
+      try { fs.unlinkSync(modelsPath); } catch (e) {}
+    }
+  }
 
   // ─── Launch Agent ───────────────────────────────────────────────
   const piCliPath = path.resolve(pkgDir, 'node_modules', '@earendil-works', 'pi-coding-agent', 'dist', 'cli.js');
