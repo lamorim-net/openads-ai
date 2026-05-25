@@ -13,6 +13,7 @@ import { runSetup } from './setup.js';
 import { runDoctor } from './doctor.js';
 import { runScheduleManager, runScheduledTask, openReportInBrowser, listReports } from './schedule.js';
 import enquirer from 'enquirer';
+import { hasGlobalRtk } from './token-optimizer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,6 +96,7 @@ _You can also edit this file manually at: ${contextPath}_
 
 function buildSystemPrompt(config: any): string {
   const contextPath = path.join(CONFIG_DIR, 'context', 'my-business.md');
+  const isLaunchMode = config.mode === 'launch';
 
   const parts = [
     'You are OpenAds, an AI marketing assistant built for digital marketers.',
@@ -102,7 +104,23 @@ function buildSystemPrompt(config: any): string {
     'Always speak in plain marketing language. Never use developer jargon.',
     'Address the user as a marketing professional.',
     'When writing ad copy or recommendations, always reference the user\'s product context first.',
-    'For any write operation (creating campaigns, changing budgets), always preview the change and ask for explicit confirmation before executing.',
+  ];
+
+  if (isLaunchMode) {
+    parts.push(
+      'YOU ARE OPERATING IN LAUNCH MODE (READ-WRITE).',
+      'You are authorized to execute active write modifications on ad accounts (e.g. pausing campaigns, scaling bids, altering daily budgets, creating ads).',
+      'CRITICAL SAFETY RULE: For any write operation, you MUST generate a clear visual preview card outlining the exact changes and ask the user for explicit confirmation (Y/N) before executing. NEVER make active changes without their explicit confirmation.'
+    );
+  } else {
+    parts.push(
+      'YOU ARE OPERATING IN AUDIT MODE (SAFE / READ-ONLY).',
+      'You are authorized to read campaigns, analyze performance data, find budget waste, and recommend copy or landing page changes.',
+      'CRITICAL SAFETY RULE: You are NOT authorized to make any active modifications to campaigns, budgets, or ad creative settings under any circumstances.',
+      'If the user asks you to pause a campaign, change a budget, or execute a write operation, explain politely that OpenAds is currently in Audit Mode (Safe/Read-only). Outline the exact steps you would take, and tell them to toggle to Launch Mode in Settings (`openads setup`) to execute them.'
+    );
+  }
+  parts.push(
     '',
     '## Memory',
     '',
@@ -113,8 +131,8 @@ function buildSystemPrompt(config: any): string {
     'Things worth remembering: product details, audience segments, campaign performance benchmarks, winning ad angles, competitor insights, budget constraints, seasonal patterns, and any preferences the user expresses.',
     'Format each learning as a bullet point with a date, e.g.: "- (2026-05-24) Best-performing Meta creative uses customer testimonial videos."',
     'Never overwrite existing learnings — only append new ones.',
-    'If the learnings section grows beyond 50 items, summarize the oldest 25 into a "## Summary" section at the top and remove the individual bullets.',
-  ];
+    'If the learnings section grows beyond 50 items, summarize the oldest 25 into a "## Summary" section at the top and remove the individual bullets.'
+  );
 
   if (config?.productContext) {
     parts.push(`\nThe user's business: ${config.productContext}`);
@@ -287,13 +305,16 @@ async function main() {
   const googleStatus = config.connectGoogle ? chalk.green('● Connected') : chalk.gray('○ Not connected');
   const metaStatus = config.metaToken ? chalk.green('● Connected') : chalk.gray('○ Not connected');
 
+  const modeName = config.mode === 'launch' ? chalk.red.bold('Launch Mode (Read-Write)') : chalk.green.bold('Audit Mode (Safe / Read-only)');
+
   // Build compact status panel
   const statusLines = [
     `  ${chalk.bold.white('Model')}       ${modelName}`,
+    `  ${chalk.bold.white('Mode')}        ${modeName}`,
     `  ${chalk.bold.white('Google Ads')}  ${googleStatus}`,
     `  ${chalk.bold.white('Meta Ads')}    ${metaStatus}`,
     '',
-    `  ${chalk.gray('v0.1.0')}  ${chalk.gray('·')}  ${chalk.gray('AI Command Center for Marketers')}`,
+    `  ${chalk.gray('v0.2.1')}  ${chalk.gray('·')}  ${chalk.gray('AI Command Center for Marketers')}`,
   ].join('\n');
 
   console.log(
@@ -428,12 +449,23 @@ async function main() {
     provider: { maxRetryDelayMs: 120000 }
   };
 
+  // Setup MCP Servers inside settings.json
+  settings.mcpServers = settings.mcpServers || {};
+  const useRtk = hasGlobalRtk();
+
+  // Google Ads integration
+  if (config.connectGoogle) {
+    settings.mcpServers['google-ads'] = {
+      command: useRtk ? 'rtk' : 'uvx',
+      args: useRtk ? ['uvx', 'adloop'] : ['adloop']
+    };
+  }
+
   // Inject Meta MCP server if token is present
   if (config.metaToken) {
-    settings.mcpServers = settings.mcpServers || {};
     settings.mcpServers['meta-ads'] = {
-      command: 'npx',
-      args: ['-y', '@meta/mcp-server'],
+      command: useRtk ? 'rtk' : 'npx',
+      args: useRtk ? ['npx', '-y', '@meta/mcp-server'] : ['-y', '@meta/mcp-server'],
       env: { META_ACCESS_TOKEN: config.metaToken }
     };
   }

@@ -130,6 +130,7 @@ export async function runSetup() {
   let customModel = '';
   let localModelName = '';
   let localBaseUrl = '';
+  let mode: 'audit' | 'launch' = 'audit';
 
   if (provider === 'local') {
     console.log(chalk.yellow('\n--- Local AI Setup ---'));
@@ -218,8 +219,29 @@ export async function runSetup() {
 
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
-  // Step 2: Google Ads
-  console.log(chalk.cyan('Step 2/4: Connect Google Ads (optional)\n'));
+  // Step 2: Choose operational mode
+  console.log(chalk.cyan('Step 2/5: Choose operational mode\n'));
+  console.log('OpenAds has two operational modes:');
+  console.log(` - ${chalk.green.bold('Audit Mode (Safe / Read-only)')}: AI can analyze performance, find budget waste, and recommend strategies. Zero risk.`);
+  console.log(` - ${chalk.red.bold('Launch Mode (Read-Write)')}: AI is authorized to optimize bids, modify budgets, and launch ads (always requires confirmation).\n`);
+
+  const modeAnswers = await enquirer.prompt<{ selectedMode: 'audit' | 'launch' }>({
+    type: 'select',
+    name: 'selectedMode',
+    message: 'Choose your default operational mode:',
+    choices: [
+      { name: 'audit', message: 'Audit Mode (Safe / Read-only — Recommended)' },
+      { name: 'launch', message: 'Launch Mode (Read-Write — Active campaign changes)' }
+    ],
+    initial: existingConfig.mode === 'launch' ? 1 : 0
+  } as any);
+  mode = modeAnswers.selectedMode;
+
+  console.log(chalk.green(`\n✓ Operational mode configured: ${mode === 'launch' ? 'Launch Mode (Read-Write)' : 'Audit Mode (Safe / Read-only)'}.\n`));
+  console.log(chalk.gray('─────────────────────────────────────────\n'));
+
+  // Step 3: Google Ads
+  console.log(chalk.cyan('Step 3/5: Connect Google Ads (optional)\n'));
   console.log('OpenAds can read and analyze your Google Ads campaigns, keywords, and performance.\n');
 
   const { connectGoogle } = await enquirer.prompt<{ connectGoogle: boolean }>({
@@ -261,8 +283,8 @@ export async function runSetup() {
   }
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
-  // Step 3: Meta Ads
-  console.log(chalk.cyan('Step 3/4: Connect Meta Ads (optional)\n'));
+  // Step 4: Meta Ads
+  console.log(chalk.cyan('Step 4/5: Connect Meta Ads (optional)\n'));
   console.log('OpenAds can read your Meta campaigns, creatives, and audience performance.\n');
 
   let metaToken = '';
@@ -374,8 +396,8 @@ export async function runSetup() {
   }
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
-  // Step 4: Business Context
-  console.log(chalk.cyan('Step 4/4: Tell me about your business\n'));
+  // Step 5: Business Context
+  console.log(chalk.cyan('Step 5/5: Tell me about your business\n'));
 
   const { productContext } = await enquirer.prompt<{ productContext: string }>({
     type: 'input',
@@ -400,6 +422,7 @@ export async function runSetup() {
     provider: finalModel,
     apiKey,
     localBaseUrl,
+    mode,
     connectGoogle,
     metaToken,
     productContext

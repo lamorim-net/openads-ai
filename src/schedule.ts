@@ -7,6 +7,7 @@ import { spawnSync } from 'child_process';
 import gradient from 'gradient-string';
 import open from 'open';
 import { compileHtmlReport } from './report-template.js';
+import { optimizeTokenContext } from './token-optimizer.js';
 
 const openadsGradient = gradient(['#00d2ff', '#3a7bd5', '#00d2ff']);
 const CONFIG_DIR = path.join(os.homedir(), '.openads');
@@ -308,11 +309,15 @@ export async function runScheduledTask(name: string): Promise<void> {
   });
 
   if (result.stdout) {
-    console.log(result.stdout);
-    fullMarkdown += result.stdout;
+    const cleanOutput = optimizeTokenContext(result.stdout);
+    console.log(cleanOutput);
+    fullMarkdown += cleanOutput;
   }
   if (result.stderr) {
-    console.error(result.stderr);
+    const cleanError = optimizeTokenContext(result.stderr);
+    if (cleanError.trim()) {
+      console.error(cleanError);
+    }
   }
 
   // Compile and save the HTML report
