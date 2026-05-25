@@ -1,6 +1,6 @@
 {
   "name": "openads-ai",
-  "version": "0.2.8",
+  "version": "0.3.0",
   "description": "Open-source AI command center for digital marketers. Audit campaigns, write ad copy, and build strategies — from your terminal.",
   "main": "dist/cli.js",
   "bin": {
@@ -58,12 +58,13 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/cli.js",
-    "dev": "ts-node src/cli.ts",
+    "dev": "ts-node-esm src/cli.ts",
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.75.5",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "boxen": "^8.0.1",
     "chalk": "^5.3.0",
     "enquirer": "^2.4.1",

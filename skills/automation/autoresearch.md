@@ -1,59 +1,44 @@
 ---
 name: autoresearch
-description: Autonomously generate, score, and iterate on marketing assets.
+description: Core autonomous loop to generate, score, and iterate on new marketing hypotheses.
 ---
-# Autoresearch (Autonomous Improvement Loop)
+# Autoresearch (Autonomous marketing loop)
 
 ## When to Use This Skill
 
-Activate this skill when the user wants to autonomously generate, test, and iterate on marketing hypotheses. This is the **Modify → Verify → Keep/Discard → Repeat** loop applied to digital marketing.
+Activate this skill when the user triggers the core autonomous marketing loop (`/autoresearch` or selecting "Generate new hypotheses" in the CLI). This is the autonomous **Modify (Generate) ➡️ Verify (Score) ➡️ Keep/Discard ➡️ Repeat** engine.
 
-Use this for tasks like:
-- Generating 50 headline hypotheses, scoring them against the ICP context, and keeping the top 5
-- Iterating on ad copy variants and checking them against character limits or ad strength rules
-- Brainstorming A/B test concepts and evaluating their statistical viability
-- Running an overnight loop to optimize landing page structures
-
-Read `product-marketing.md` first to understand the context against which you are scoring or generating ideas.
+The core philosophy of Autoresearch is:
+1. **Goal + Metric + Loop** — Define a clear goal, a rigorous metric, and loop autonomously.
+2. **Prior data is fuel, not the deliverable** — Do not spend the conversation summarizing prior results. Quickly extract winning and losing patterns behind the scenes, and immediately use them to generate smarter, NEW hypotheses.
+3. **The output is NEW, testable assets** — The final deliverable is always a prioritized table of concrete assets (headlines, ad copy variants, landing page layouts, creative hooks) ready to be tested.
 
 ---
 
-## The Autoresearch Loop
+## The Autoresearch Loop Execution
 
-When running an autoresearch task, follow this strict loop. Do not stop until the goal is reached or the user interrupts.
+When running the loop, execute at least **3 full cycles** autonomously before presenting the final results. Do not stop to prompt the user between cycles.
 
-### 1. Modify (Generate)
-Generate a batch of new variants based on the strategy. If this is iteration 2+, look at what succeeded/failed in previous loops to inform your generation.
+### Phase 1: Ingest Fuel & Initialize
+- Quickly review `product-marketing.md` and any provided prior experiment data (like a CSV or campaign performance logs).
+- **CONCISE INGESTION RULE**: Extract 3-5 high-level patterns of what worked and what failed. Do not list individual rows or campaigns one-by-one.
+- Initialize the iteration counter.
 
-### 2. Verify (Score)
-Score the generated variants. If a tool is available (e.g. Adloop's ad strength checker, or an external LLM evaluation), use it. If not, use internal logic to score them against the `product-marketing.md` constraints (e.g., "Does this mention the primary pain point? Does it fit character limits?").
+### Phase 2: Autonomous Iteration Loop
+For each loop (run at least 3):
+1. **Modify (Generate)**: Generate a batch of NEW testable hypotheses (e.g. headlines, hooks, page variants). If iteration 2+, adapt based on the reasons why previous variants failed or succeeded.
+2. **Verify (Score)**: Evaluate each hypothesis against the defined metric (e.g., PAS framework, character limits, compliance, brand alignment) and product context. Assign a numeric score.
+3. **Keep / Discard**: Keep only variants scoring above your quality threshold. Discard the rest, noting the specific reason for failure (e.g. "too generic", "no clear pain point", "exceeded 30-char limit").
 
-### 3. Keep / Discard
-Keep only the variants that pass the verification threshold. Discard the rest. Document *why* they were discarded to inform the next loop.
-
-### 4. Repeat
-If the goal is met (e.g., "I need 10 excellent ad variants"), stop and present the results. If not, return to Step 1.
-
----
-
-## Setting Up a Plan
-
-Before starting the loop, you must define the boundaries. If the user hasn't provided this, ask them to define:
-1. **Goal**: What are we trying to achieve? (e.g., "Generate 20 high-converting headlines")
-2. **Metric**: How do we score them? (e.g., "Must pass PAS framework criteria and be under 30 characters")
-3. **Scope**: What is out of bounds? (e.g., "Do not use the word 'Free'")
-
-(Tip: recommend the user type `/autoresearch:plan` to launch the configuration wizard).
-
----
-
-## Output Format
-
-While looping, keep the user updated with a concise progress log:
-```
-Loop 1: Generated 10. 2 passed, 8 discarded. (Reason: too long)
-Loop 2: Generated 10. 4 passed, 6 discarded. (Reason: weak hook)
-...
-```
-
-At the end, present the final "Kept" list formatted as a markdown table or code block, ready for export.
+### Phase 3: Reporting & Automatic Export
+- Log the progress of each cycle to the user:
+  ```
+  Loop 1: Generated 10 hypotheses. 3 passed, 7 discarded. (Reasons: too long, weak hook)
+  Loop 2: Generated 8 hypotheses. 5 passed, 3 discarded. (Reasons: too generic)
+  Loop 3: Generated 8 hypotheses. 6 passed, 2 discarded. (Reasons: off-brand)
+  ```
+- Present a final prioritized table of the **NEW** testable assets, containing:
+  - **Asset/Copy**: The literal text/layout to test.
+  - **Rationale**: Why this is expected to win based on prior patterns or marketing frameworks.
+  - **Priority Score**: High / Medium / Low.
+- **AUTOMATIC FILE EXPORT**: You MUST automatically save the final prioritized list of hypotheses to a markdown report on disk: `~/.openads/reports/autoresearch-[timestamp].md`.

@@ -41,5 +41,25 @@ Read `product-marketing.md` first to understand the product context.
 
 ---
 
-## MCP Tools to Use
-If Meta Ads MCP is connected, you can pull campaign insights, ad sets, and ad creative performance. Ensure you review the performance to provide data-driven recommendations.
+## MCP Tools to Use & Execution Sequence
+
+When Meta Ads MCP is connected, you must follow this exact sequence to retrieve campaign performance data proactively without stopping or using placeholders:
+
+1. **Discover Ad Accounts**: First, call `get_ad_accounts()` (takes no parameters) to retrieve the active account ID (e.g. `act_527976914813519`).
+2. **List Campaigns**: Call `list_campaigns(account_id: "act_527976914813519")` (using the literal account ID retrieved in Step 1) to get a list of active and inactive campaigns.
+3. **Fetch Performance & Insights**: Do NOT stop at listing the campaigns or ask for permission. Proceed immediately to retrieve performance/insights for the discovered active campaign IDs.
+   - For overall campaign performance metrics, call `get_campaign_performance(object_id: "YOUR_CAMPAIGN_ID", level: "CAMPAIGN")` using the literal campaign ID (e.g., `23845056436410209`).
+   - For detailed adset/ad level insights or breaking down statistics, call `get_insights(object_id: "YOUR_CAMPAIGN_ID", level: "CAMPAIGN")`.
+4. **Present Results**: Structure and format the retrieved insights into a beautiful marketing summary featuring spend, impressions, CTR, ROAS, and conversions.
+
+### Execution Example Flow
+```mermaid
+graph TD
+    A["get_ad_accounts()"] -->|Returns act_527976914813519| B["list_campaigns(account_id: 'act_527976914813519')"]
+    B -->|Returns Campaign 23845056436410209| C["get_campaign_performance(object_id: '23845056436410209')"]
+    C -->|Fetch Metrics Proactively| D[Format & Display Beautiful Marketing Summary]
+```
+
+**CRITICAL RULES**:
+- **NEVER** use generic placeholder strings like `<your_account_id>` or `act_YOUR_ACCOUNT_ID` in tool arguments under any circumstances. Always extract the literal IDs from previous tool outputs.
+- **NEVER** stop at listing campaigns or ask the user "Would you like me to fetch performance details?"—always proactively fetch the performance/insights of the active campaigns.

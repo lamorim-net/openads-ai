@@ -13,6 +13,7 @@ import { runSetup } from './setup.js';
 import { runDoctor } from './doctor.js';
 import { runScheduleManager, runScheduledTask, openReportInBrowser, listReports } from './schedule.js';
 import enquirer from 'enquirer';
+import readline from 'readline';
 import { hasGlobalRtk } from './token-optimizer.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -109,7 +110,18 @@ function buildSystemPrompt(config: any): string {
     '- You have direct, live access to Google Ads, Meta Ads, and Google Analytics 4 (GA4) via custom Model Context Protocol (MCP) server tools.',
     '- Whenever the user asks to check campaigns, review metrics, fetch performance data, or analyze active ads, you MUST use the corresponding MCP server tools to query the live platforms.',
     '- NEVER search the local file system, run grep/ripgrep, check Git logs, or read codebase files to search for ad campaign data. The active folder is just the application source code — it contains zero campaign metrics. Campaign data comes ONLY from querying your active MCP server tools.',
+    '- To fetch Meta campaign data: ALWAYS call `get_ad_accounts()` first (takes no parameters) to retrieve the active account ID. Then call `list_campaigns(account_id)` to list campaigns and retrieve active campaign IDs. Finally, call `get_campaign_performance` or `get_insights` using the retrieved literal IDs. Never guess or omit `object_id` when calling performance tools, and NEVER use generic placeholder tokens like `<your_account_id>` or `act_YOUR_ACCOUNT_ID` under any circumstances.',
+    '- You are a highly proactive, self-starting digital marketer. When the user asks to check campaigns, review metrics, or fetch performance reports, DO NOT stop at listing campaign names, and DO NOT ask for permission or prompt the user for campaign IDs. IMMEDIATELY proceed to query performance or insights (`get_campaign_performance` or `get_insights`) for the discovered active campaign IDs. Deliver a beautiful marketing summary with structured key metrics (spend, impressions, CTR, ROAS, conversions) proactively and instantly rather than hesitating or asking redundant confirmation questions.',
+    '- ANTI-LOOP SAFETY RULE: Once a tool (like `get_ad_accounts`) successfully returns its data, NEVER call it again in the same turn. Proceed immediately to the next logical step (e.g. calling `list_campaigns` or `get_campaign_performance`). If you repeat the exact same tool call consecutively, your connection will be flagged. Always move forward and progress through the tool chain.',
   ];
+
+  parts.push(
+    '',
+    '## Safety and Desktop Search Rules',
+    '- NEVER claim the user "specifically mentioned" a platform (like Meta or Google) unless they literally wrote the name of the platform in their chat message. If a platform is connected in your setup but they did not name it, state clearly: "I see that you have Meta Ads connected in your setup, so..." instead of claiming they mentioned it.',
+    '- NEVER execute system-wide search commands starting from root (like `find / ...` or `grep -r ... /`). Running searches from root is extremely slow and dangerous. If the user mentions a file on their desktop but the folder path is unclear, ALWAYS use `list_dir` to inspect `~/Desktop` first, or ask the user for the exact folder name. Never run root `find` commands under any circumstances.',
+    ''
+  );
 
   if (isLaunchMode) {
     parts.push(
@@ -125,6 +137,42 @@ function buildSystemPrompt(config: any): string {
       'If the user asks you to pause a campaign, change a budget, or execute a write operation, explain politely that OpenAds is currently in Audit Mode (Safe/Read-only). Outline the exact steps you would take, and tell them to toggle to Launch Mode in Settings (`openads setup`) to execute them.'
     );
   }
+  parts.push(
+    '',
+    '## Autonomous Marketing Loops (Autoresearch)',
+    '- The PURPOSE of Autoresearch is to generate NEW, actionable, testable hypotheses. The deliverable is ALWAYS a prioritized list of what to test NEXT — concrete headlines, landing page variants, creative hooks, ad copy alternatives, layout changes, CTA experiments, or email subject lines. It is NOT a summary or review of past results.',
+    '- Prior experiment data (CSVs, campaign logs, past A/B test results) is FUEL for the loop — not the output. When the user provides prior data, ingest it quickly, extract the top 3-5 winning patterns and losing patterns, and immediately use those learnings to generate smarter new hypotheses. Spend at most 2-3 sentences summarizing old results before pivoting to new recommendations.',
+    '- CONCISE DATA INGESTION: When analyzing prior data, NEVER list individual experiments one-by-one. Aggregate behind the scenes, extract key patterns (e.g. "Video hero sections drove 3.4% CVR vs 1.9% for static images", "Mega-menu navigation correlated with 3.9% CVR"), and pivot immediately to generating new testable hypotheses informed by those patterns.',
+    '- The autonomous loop follows Karpathy\'s autoresearch methodology — Goal + Metric + Iterate: Generate (Create new testable assets — concrete headlines, page layouts, creative hooks, copy variants) ➡️ Score (Evaluate each against prior learnings, marketing frameworks, CRO best practices, and the user\'s product context) ➡️ Keep / Discard (Keep only those scoring above threshold; document why others failed) ➡️ Iterate (Refine survivors, generate new variations inspired by winners, repeat until you have a polished final set of recommendations).',
+    '- Keep the user updated on each cycle with a concise progress log (e.g. "Loop 1: Generated 10 headline hypotheses. 3 passed, 7 discarded. (Reason: too generic, no pain point)" and "Loop 2: Generated 8. 5 passed. ...").',
+    '- End by presenting a beautifully structured final table of the NEW hypotheses to test, each with: the concrete asset/copy, the rationale (why it should win based on prior data patterns), and a priority score.',
+    '- AUTOMATIC FILE EXPORT: At the end of the loop, you MUST automatically save the final prioritized list of new testable hypotheses to `autoresearch-[timestamp].md` inside `~/.openads/reports/`.',
+    ''
+  );
+  parts.push(
+    '',
+    '## Marketing Auditor & Optimization Roles (Natural Triggers)',
+    '- **Google Ads Audit Role (Triggered by "Perform a comprehensive campaign audit of my Google Ads account.")**: You are the Google Ads Auditor. Verify if Google Ads MCP is connected. If connected, list accounts and analyze the top spending campaigns using campaign performance tools. If disconnected, ask the user to provide their campaign stats. Apply `google-ads.md` skill to evaluate keywords, match types, and bidding. Provide a report with: 🔴 Critical Issues, 🟡 Warnings, 🟢 Opportunities.',
+    '- **Meta Ads Audit Role (Triggered by "Perform a comprehensive campaign audit of my Meta Ads account.")**: You are the Meta Ads Auditor. Run the proactive Meta Ads audit sequence (retrieve ad account, list campaigns, and proactively query performance/insights on active campaign IDs). Apply `meta-ads.md` skill to evaluate ABO vs CBO, creative hooks, and ad copy. Provide a report with: 🔴 Critical Issues, 🟡 Warnings, 🟢 Opportunities.',
+    '- **Multi-Platform Audit Role (Triggered by "Perform a comprehensive multi-platform campaign audit of my connected ad accounts.")**: You are the Lead Growth Marketing Auditor. Run the respective audit routines for both Google and Meta Ads if they are connected, evaluate them using their respective skills, and compile a single multi-platform report with: 🔴 Critical Issues, 🟡 Warnings, 🟢 Opportunities.',
+    '- **Ad Copywriter Role (Triggered by "Help me generate high-performing ad copy for my campaigns.")**: You are the Ad Copywriter. Read `product-marketing.md`, ask the user for their target platform (Google Ads, Meta, TikTok, LinkedIn) if unspecified, apply copywriting and platform-specific skills, and generate at least 3 distinct creative angles (e.g. Pain, Curiosity, Social Proof).',
+    '- **Go-To-Market Strategist Role (Triggered by "Help me build a comprehensive Go-To-Market strategy for my product.")**: You are the Go-To-Market Strategist. Read `product-marketing.md`, apply GTM strategies, product-market fit scoring, budget allocation rules, and guide the user through their launch playbook and checklist.',
+    '',
+    '## Autoresearch Command Roles',
+    '- **Core Loop (Triggered by "Launch the Autoresearch core loop to generate new testable marketing hypotheses.")**: Read `autoresearch.md` skill. Generate NEW testable hypotheses (headlines, copy, pages, hooks) using Goal + Metric + Loop. Prior data is fuel. Run at least 3 autonomous cycles: Generate ➡️ Score ➡️ Keep/Discard ➡️ Iterate. Output cycle logs, final table, and auto-save to `~/.openads/reports/`.',
+    '- **Plan (Triggered by "Help me plan a marketing experiment with Autoresearch.")**: Read `autoresearch-plan.md` skill. Walk the user through Goal → Metric → Scope → Prior Data interactively. Output a validated experiment config ready to run. If the user provides a CSV, ingest it as fuel, extract patterns, and pre-fill the config. End with "Would you like me to start the autonomous loop now? (Y/N)".',
+    '- **Improve (Triggered by "Research my ICP and find growth opportunities with Autoresearch.")**: Read `autoresearch-improve.md` skill. Research ICP pain points, competitor gaps, market trends, channel opportunities, and revenue growth angles. Generate prioritized campaign briefs / PRDs. 15 iterations.',
+    '- **Learn (Triggered by "Analyze my competitors and market positioning with Autoresearch.")**: Read `autoresearch-learn.md` skill. Competitive intelligence: scout competitor pages/ads/positioning, generate knowledge docs, identify gaps and opportunities. 10 iterations.',
+    '- **Predict (Triggered by "Assemble 5 marketing expert personas to evaluate my hypothesis with Autoresearch.")**: Read `autoresearch-predict.md` skill. 5 expert personas (CMO, Performance Marketer, Brand Strategist, CRO Specialist, Data Analyst) debate the user\'s hypothesis. Output consensus score and go/no-go recommendation. One-shot.',
+    '- **Probe (Triggered by "Have 8 marketing personas stress-test my campaign brief with Autoresearch.")**: Read `autoresearch-probe.md` skill. 8 personas (Media Buyer, Creative Director, Data Analyst, Brand Manager, UX Designer, Compliance Officer, CFO, Target Customer) interrogate the brief for blind spots. 15 iterations.',
+    '- **Reason (Triggered by "Run an adversarial debate on this marketing strategy decision with Autoresearch.")**: Read `autoresearch-reason.md` skill. Two sides argue, blind judges score. For hard calls like broad vs niche, video vs static, discount vs value. 8 iterations.',
+    '- **Scenario (Triggered by "Generate what-if scenarios for my marketing plan with Autoresearch.")**: Read `autoresearch-scenario.md` skill. Edge cases across 12 marketing dimensions: competitor moves, algorithm changes, budget cuts, creative fatigue, seasonality, etc. 20 iterations.',
+    '- **Evals (Triggered by "Analyze my past marketing experiment results with Autoresearch.")**: Read `autoresearch-evals.md` skill. Find trends, plateaus, winning/losing patterns in prior experiment data. Recommend next experiment. One-shot.',
+    '- **Debug (Triggered by "Debug why my marketing campaign is underperforming with Autoresearch.")**: Read `autoresearch-debug.md` skill. Hypothesis-driven root cause analysis: creative fatigue, audience saturation, competitor entry, message-market misfit, tracking issues, etc. 15 iterations.',
+    '- **Fix (Triggered by "Fix these known marketing asset issues one-by-one with Autoresearch.")**: Read `autoresearch-fix.md` skill. Systematically crush issues: character limits, compliance, broken tracking, accessibility, branding inconsistencies. 20 iterations.',
+    '- **Security (Triggered by "Run a brand safety and compliance audit on my marketing assets with Autoresearch.")**: Read `autoresearch-security.md` skill. Trademark violations, regulatory compliance (FTC, GDPR), misleading claims, accessibility, brand consistency. 15 iterations. Report: 🔴 Critical, 🟡 Warning, 🟢 Opportunity.',
+    '- **Ship (Triggered by "Prepare my winning marketing assets for deployment with Autoresearch.")**: Read `autoresearch-ship.md` skill. Format for platform specs, generate deployment brief, QA, recommend UTMs and measurement plan, suggest test duration and sample size. Linear phases. Save to `~/.openads/reports/`.'
+  );
   parts.push(
     '',
     '## Memory',
@@ -150,6 +198,15 @@ function buildSystemPrompt(config: any): string {
   if (config?.metaToken) {
     parts.push('Meta Ads is connected — you can read live campaign and creative data.');
   }
+
+  parts.push(
+    '',
+    '## HIGH-PRIORITY INTEGRITY RULE',
+    '- Even if Meta Ads or Google Ads are connected above, you must NEVER assume or state that the Autoresearch wizard is specifically for Meta Ads, Google Ads, or any single channel at startup. You must remain 100% general-purpose and platform-agnostic.',
+    '- You must NEVER ask for budget, spending limits, daily caps, campaign status, or ad-account settings during Autoresearch setup. Autoresearch generates NEW testable hypotheses and ONLY requires: Goal (what new assets to generate), Metric (how to score them), Scope (constraints), and Prior Data (optional fuel).',
+    '- THE DELIVERABLE IS ALWAYS NEW HYPOTHESES TO TEST — never a summary of old data. Prior data is fuel that informs what to generate next. When given a CSV, spend at most 2-3 sentences extracting patterns, then immediately pivot to drafting the plan for generating NEW testable assets. Draft the **Autoresearch Plan** and end with: "Would you like me to start the autonomous loop now? (Y/N)". NEVER stop at a data summary!',
+    '- AUTONOMOUS LOOP EXECUTION: Once approved, execute at least 3 cycles autonomously in a SINGLE response. Each cycle: generate NEW concrete testable assets (headlines, page variants, hooks, copy) ➡️ score against the metric ➡️ keep winners, discard losers with reasons ➡️ iterate. Output cycle logs, final table of NEW hypotheses with rationale + priority score, and auto-save to `~/.openads/reports/autoresearch-[timestamp].md`.'
+  );
 
   return parts.join('\n');
 }
@@ -242,9 +299,6 @@ function showSkills(): void {
   }
 
   console.log(chalk.gray('  ─────────────────────────────────────────────────────'));
-  console.log(`  ${chalk.bold.white('Want more?')} 30+ community skills available at:`);
-  console.log(`  ${chalk.cyan('https://github.com/coreyhaines31/marketingskills')}`);
-  console.log('');
   console.log(chalk.gray('  To add a skill, drop a .md file into the skills/ folder.'));
   console.log(chalk.gray('  The agent picks them up automatically — no code needed.'));
   console.log('');
@@ -300,10 +354,7 @@ async function main() {
   }
 
   // ─── Splash Screen ──────────────────────────────────────────────
-  console.clear();
-  console.log('');
-  console.log(openadsGradient(LOGO));
-  console.log('');
+  const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
 
   const cleanProvider = resolveModel(config.provider);
   const modelName = chalk.cyan.bold(cleanProvider);
@@ -319,70 +370,159 @@ async function main() {
     `  ${chalk.bold.white('Google Ads')}  ${googleStatus}`,
     `  ${chalk.bold.white('Meta Ads')}    ${metaStatus}`,
     '',
-    `  ${chalk.gray('v0.2.1')}  ${chalk.gray('·')}  ${chalk.gray('AI Command Center for Marketers')}`,
+    `  ${chalk.gray(`v${pkg.version}`)}  ${chalk.gray('·')}  ${chalk.gray('AI Command Center for Marketers')}`,
   ].join('\n');
-
-  console.log(
-    boxen(statusLines, {
-      padding: { top: 1, bottom: 1, left: 2, right: 2 },
-      margin: { top: 0, bottom: 1, left: 2, right: 2 },
-      borderStyle: 'round',
-      borderColor: 'cyan',
-      dimBorder: true,
-    })
-  );
 
   // ─── Interactive Menu (when no args) ────────────────────────────
   let finalArgs = [...args];
 
   if (args.length === 0) {
-    const { action } = await enquirer.prompt<{ action: string }>({
-      type: 'select',
-      name: 'action',
-      message: chalk.bold('What would you like to do?'),
-      choices: [
-        { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
-        { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns ${chalk.gray('(audit)')}` },
-        { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform ${chalk.gray('(copywriting)')}` },
-        { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas automatically ${chalk.gray('(autoresearch)')}` },
-        { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan ${chalk.gray('(strategy)')}` },
-        { name: 'skills',       message: `${chalk.cyan('📚')}  Browse available skills` },
-        { name: 'schedule',     message: `${chalk.cyan('⏰')}  Schedule automations` },
-        { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
-        { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
-        { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
-      ]
-    });
+    while (true) {
+      console.clear();
+      console.log('');
+      console.log(openadsGradient(LOGO));
+      console.log('');
+      console.log(
+        boxen(statusLines, {
+          padding: { top: 1, bottom: 1, left: 2, right: 2 },
+          margin: { top: 0, bottom: 1, left: 2, right: 2 },
+          borderStyle: 'round',
+          borderColor: 'cyan',
+          dimBorder: true,
+        })
+      );
 
-    if (action === 'exit') {
-      console.log(chalk.cyan('\n  Goodbye! Keep marketing 🎯\n'));
-      return;
-    }
-    if (action === 'setup') {
-      await runSetup();
-      return;
-    }
-    if (action === 'doctor') {
-      await runDoctor();
-      return;
-    }
-    if (action === 'skills') {
-      showSkills();
-      return;
-    }
-    if (action === 'schedule') {
-      await runScheduleManager();
-      return;
-    }
+      const { action } = await enquirer.prompt<{ action: string }>({
+        type: 'select',
+        name: 'action',
+        message: chalk.bold('What would you like to do?'),
+        choices: [
+          { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
+          { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns ${chalk.gray('(audit)')}` },
+          { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform ${chalk.gray('(copywriting)')}` },
+          { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas automatically ${chalk.gray('(autoresearch)')}` },
+          { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan ${chalk.gray('(strategy)')}` },
+          { name: 'skills',       message: `${chalk.cyan('📚')}  Browse available skills` },
+          { name: 'schedule',     message: `${chalk.cyan('⏰')}  Schedule automations` },
+          { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
+          { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
+          { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
+        ]
+      });
 
-    const actionMap: Record<string, string[]> = {
-      chat:         [],
-      audit:        ['audit-google-ads'],
-      copy:         ['write-ad-copy'],
-      autoresearch: ['autoresearch-plan'],
-      gtm:          ['go-to-market'],
-    };
-    finalArgs = actionMap[action] || [];
+      if (action === 'exit') {
+        console.log(chalk.cyan('\n  Goodbye! Keep marketing 🎯\n'));
+        return;
+      }
+      if (action === 'setup') {
+        await runSetup();
+        return;
+      }
+      if (action === 'doctor') {
+        await runDoctor();
+        console.log(chalk.cyan('\n  Press Enter to go back to the menu...'));
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        await new Promise<void>(resolve => {
+          rl.question('', () => {
+            rl.close();
+            resolve();
+          });
+        });
+        continue;
+      }
+      if (action === 'skills') {
+        showSkills();
+        console.log(chalk.cyan('\n  Press Enter to go back to the menu...'));
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        await new Promise<void>(resolve => {
+          rl.question('', () => {
+            rl.close();
+            resolve();
+          });
+        });
+        continue;
+      }
+      if (action === 'schedule') {
+        await runScheduleManager();
+        continue;
+      }
+
+      if (action === 'audit') {
+        let auditPrompt = 'Perform a comprehensive campaign audit of my Google Ads account.';
+        if (config.metaToken && !config.connectGoogle) {
+          auditPrompt = 'Perform a comprehensive campaign audit of my Meta Ads account.';
+        } else if (config.metaToken && config.connectGoogle) {
+          auditPrompt = 'Perform a comprehensive multi-platform campaign audit of my connected ad accounts.';
+        }
+        finalArgs = [auditPrompt];
+      } else if (action === 'autoresearch') {
+        // ── Autoresearch Submenu ─────────────────────────────────
+        console.log();
+        const { arAction } = await enquirer.prompt<{ arAction: string }>({
+          type: 'select',
+          name: 'arAction',
+          message: chalk.bold('🔬 Autoresearch — What do you want to do?'),
+          choices: [
+            // DISCOVER
+            { name: 'ar-plan',     message: `${chalk.yellow('── DISCOVER ──────────────────────────')}` },
+            { name: 'ar-plan',     message: `${chalk.cyan('📋')}  Plan my experiment              ${chalk.gray('Figure out what to test & how to measure')}` },
+            { name: 'ar-improve',  message: `${chalk.cyan('🧠')}  Research ICP & growth            ${chalk.gray('Find opportunities from ICP, competitors, market')}` },
+            { name: 'ar-learn',    message: `${chalk.cyan('💡')}  Learn from the market            ${chalk.gray('Competitive intel — analyze what others do')}` },
+            // GENERATE
+            { name: 'ar-core',     message: `${chalk.green('── GENERATE ──────────────────────────')}` },
+            { name: 'ar-core',     message: `${chalk.cyan('🎯')}  Generate new hypotheses          ${chalk.gray('Create & iterate on headlines, copy, pages, hooks')}` },
+            // VALIDATE
+            { name: 'ar-predict',  message: `${chalk.blue('── VALIDATE ──────────────────────────')}` },
+            { name: 'ar-predict',  message: `${chalk.cyan('🔮')}  Get expert predictions           ${chalk.gray('5 marketing experts debate your idea')}` },
+            { name: 'ar-probe',    message: `${chalk.cyan('🔍')}  Stress-test my brief             ${chalk.gray('8 personas interrogate your campaign plan')}` },
+            { name: 'ar-reason',   message: `${chalk.cyan('⚖️')}   Debate a strategy call           ${chalk.gray('Adversarial debate: broad vs niche, video vs static')}` },
+            { name: 'ar-scenario', message: `${chalk.cyan('🎭')}  Run what-if scenarios            ${chalk.gray('Competitor copies us? Algorithm changes? Budget cuts?')}` },
+            // ANALYZE
+            { name: 'ar-evals',    message: `${chalk.magenta('── ANALYZE ───────────────────────────')}` },
+            { name: 'ar-evals',    message: `${chalk.cyan('📊')}  Analyze past results             ${chalk.gray('Trends, plateaus, patterns in experiment data')}` },
+            { name: 'ar-debug',    message: `${chalk.cyan('🐛')}  Debug underperformance           ${chalk.gray('Why is this campaign/page/funnel failing?')}` },
+            // FIX
+            { name: 'ar-fix',      message: `${chalk.red('── FIX ───────────────────────────────')}` },
+            { name: 'ar-fix',      message: `${chalk.cyan('🔨')}  Fix issues one-by-one            ${chalk.gray('Tracking, compliance, character limits, branding')}` },
+            { name: 'ar-security', message: `${chalk.cyan('🛡️')}   Brand safety audit               ${chalk.gray('Trademark, regulatory, misleading claims')}` },
+            // SHIP
+            { name: 'ar-ship',     message: `${chalk.cyan('── SHIP ──────────────────────────────')}` },
+            { name: 'ar-ship',     message: `${chalk.cyan('🚀')}  Prepare assets to ship           ${chalk.gray('Format for platform specs, deployment brief, QA')}` },
+            // BACK
+            { name: 'ar-back',     message: `${chalk.gray('←')}   Back to main menu` },
+          ]
+        });
+
+        if (arAction === 'ar-back') {
+          continue;
+        }
+
+        const arTriggerMap: Record<string, string> = {
+          'ar-core':     'Launch the Autoresearch core loop to generate new testable marketing hypotheses.',
+          'ar-plan':     'Help me plan a marketing experiment with Autoresearch.',
+          'ar-improve':  'Research my ICP and find growth opportunities with Autoresearch.',
+          'ar-learn':    'Analyze my competitors and market positioning with Autoresearch.',
+          'ar-predict':  'Assemble 5 marketing expert personas to evaluate my hypothesis with Autoresearch.',
+          'ar-probe':    'Have 8 marketing personas stress-test my campaign brief with Autoresearch.',
+          'ar-reason':   'Run an adversarial debate on this marketing strategy decision with Autoresearch.',
+          'ar-scenario': 'Generate what-if scenarios for my marketing plan with Autoresearch.',
+          'ar-evals':    'Analyze my past marketing experiment results with Autoresearch.',
+          'ar-debug':    'Debug why my marketing campaign is underperforming with Autoresearch.',
+          'ar-fix':      'Fix these known marketing asset issues one-by-one with Autoresearch.',
+          'ar-security': 'Run a brand safety and compliance audit on my marketing assets with Autoresearch.',
+          'ar-ship':     'Prepare my winning marketing assets for deployment with Autoresearch.',
+        };
+        finalArgs = [arTriggerMap[arAction] || ''];
+      } else {
+        const actionMap: Record<string, string[]> = {
+          chat:         [],
+          copy:         ['Help me generate high-performing ad copy for my campaigns.'],
+          gtm:          ['Help me build a comprehensive Go-To-Market strategy for my product.'],
+        };
+        finalArgs = actionMap[action] || [];
+      }
+      break;
+    }
   }
 
   // ─── Loading Spinner ────────────────────────────────────────────
@@ -401,6 +541,10 @@ async function main() {
   const isLocal = !!config.localBaseUrl;
   const modelIdForPi = isLocal && cleanProvider.includes('/') ? cleanProvider.split('/')[1] : cleanProvider;
   piArgsRaw.push('--model', modelIdForPi);
+
+  // System prompt flag
+  const systemPromptPath = path.join(CONFIG_DIR, 'agent', 'SYSTEM.md');
+  piArgsRaw.push('--system-prompt', systemPromptPath);
 
   // Skills directories
   const skillsDir = path.join(pkgDir, 'skills');
@@ -448,7 +592,9 @@ async function main() {
   settings.quietStartup = true;
 
   // System prompt — makes the agent behave as OpenAds
-  settings.systemPrompt = buildSystemPrompt(config);
+  const systemPrompt = buildSystemPrompt(config);
+  settings.systemPrompt = systemPrompt;
+  fs.writeFileSync(systemPromptPath, systemPrompt);
 
   // Resilient retry settings for free-tier rate limits
   settings.retry = {
@@ -457,24 +603,16 @@ async function main() {
     provider: { maxRetryDelayMs: 120000 }
   };
 
-  // Setup MCP Servers inside settings.json
-  settings.mcpServers = settings.mcpServers || {};
-  const useRtk = hasGlobalRtk();
-
-  // Google Ads integration
-  if (config.connectGoogle) {
-    settings.mcpServers['google-ads'] = {
-      command: useRtk ? 'rtk' : 'uvx',
-      args: useRtk ? ['uvx', 'adloop'] : ['adloop']
-    };
+  // Load custom MCP Extension to register Google Ads & Meta Ads tools
+  const mcpExtensionPath = path.resolve(pkgDir, 'dist', 'mcp-extension.js');
+  settings.extensions = settings.extensions || [];
+  if (!settings.extensions.includes(mcpExtensionPath)) {
+    settings.extensions.push(mcpExtensionPath);
   }
 
-  // Inject Meta MCP server (remote SSE server) if token is present
-  if (config.metaToken) {
-    settings.mcpServers['meta-ads'] = {
-      url: 'https://mcp.facebook.com/ads/sse',
-      env: { META_ACCESS_TOKEN: config.metaToken }
-    };
+  // Clean up legacy built-in mcpServers block if present to prevent config clutter
+  if (settings.mcpServers) {
+    delete settings.mcpServers;
   }
 
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
