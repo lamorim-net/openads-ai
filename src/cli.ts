@@ -594,22 +594,117 @@ async function main() {
           continue;
         }
 
-        const arTriggerMap: Record<string, string> = {
-          'ar-core':     'Launch the Autoresearch core loop to generate new testable marketing hypotheses.',
-          'ar-plan':     'Help me plan a marketing experiment with Autoresearch.',
-          'ar-improve':  'Research my ICP and find growth opportunities with Autoresearch.',
-          'ar-learn':    'Analyze my competitors and market positioning with Autoresearch.',
-          'ar-predict':  'Assemble 5 marketing expert personas to evaluate my hypothesis with Autoresearch.',
-          'ar-probe':    'Have 8 marketing personas stress-test my campaign brief with Autoresearch.',
-          'ar-reason':   'Run an adversarial debate on this marketing strategy decision with Autoresearch.',
-          'ar-scenario': 'Generate what-if scenarios for my marketing plan with Autoresearch.',
-          'ar-evals':    'Analyze my past marketing experiment results with Autoresearch.',
-          'ar-debug':    'Debug why my marketing campaign is underperforming with Autoresearch.',
-          'ar-fix':      'Fix these known marketing asset issues one-by-one with Autoresearch.',
-          'ar-security': 'Run a brand safety and compliance audit on my marketing assets with Autoresearch.',
-          'ar-ship':     'Prepare my winning marketing assets for deployment with Autoresearch.',
-        };
-        finalArgs = [arTriggerMap[arAction] || ''];
+        let triggerMsg = '';
+
+        if (arAction === 'ar-core') {
+          let goal = '';
+          let metric = '';
+          let scope = '';
+          let csvPath = '';
+
+          const activeConfigPath = path.join(CONFIG_DIR, 'active-experiment.json');
+          let useActive = false;
+
+          if (fs.existsSync(activeConfigPath)) {
+            try {
+              const activeConfig = JSON.parse(fs.readFileSync(activeConfigPath, 'utf8'));
+              console.log(chalk.cyan('\n  Found an active experiment plan:'));
+              console.log(`  ${chalk.bold('Goal')}:   ${activeConfig.goal}`);
+              console.log(`  ${chalk.bold('Metric')}: ${activeConfig.metric}`);
+              console.log(`  ${chalk.bold('Scope')}:  ${activeConfig.scope || 'None'}`);
+              if (activeConfig.csvPath) {
+                console.log(`  ${chalk.bold('Data')}:   ${activeConfig.csvPath}`);
+              }
+              console.log('');
+
+              const { confirmActive } = await enquirer.prompt<{ confirmActive: boolean }>({
+                type: 'confirm',
+                name: 'confirmActive',
+                message: 'Would you like to run the autonomous loop on this active plan?',
+                initial: true
+              });
+
+              if (confirmActive) {
+                useActive = true;
+                goal = activeConfig.goal;
+                metric = activeConfig.metric;
+                scope = activeConfig.scope || '';
+                csvPath = activeConfig.csvPath || '';
+              }
+            } catch (e) {}
+          }
+
+          if (!useActive) {
+            console.log(chalk.cyan('\n  Let\'s configure your Autoresearch loop:'));
+            
+            const answers = await enquirer.prompt<{ goal: string; metric: string; scope: string; csvPath: string }>([
+              {
+                type: 'input',
+                name: 'goal',
+                message: 'What is your experiment Goal? (e.g., Optimize landing page conversion rate)',
+                validate: (val) => val.trim() ? true : 'Goal cannot be empty.'
+              },
+              {
+                type: 'input',
+                name: 'metric',
+                message: 'What is your primary Metric? (e.g., CVR, CTR, ROAS)',
+                validate: (val) => val.trim() ? true : 'Metric cannot be empty.'
+              },
+              {
+                type: 'input',
+                name: 'scope',
+                message: 'Any Scope constraints? (e.g., No discounts, premium tone - optional)',
+                initial: ''
+              },
+              {
+                type: 'input',
+                name: 'csvPath',
+                message: 'Path to prior experiment CSV/data file (optional - press Enter to skip)',
+                initial: '',
+                validate: (val) => {
+                  if (!val.trim()) return true;
+                  const resolved = val.startsWith('~') ? val.replace('~', os.homedir()) : path.resolve(val);
+                  if (!fs.existsSync(resolved)) {
+                    return `File not found at: ${resolved}. Please check the path.`;
+                  }
+                  return true;
+                }
+              }
+            ]);
+
+            goal = answers.goal;
+            metric = answers.metric;
+            scope = answers.scope || '';
+            csvPath = answers.csvPath ? (answers.csvPath.startsWith('~') ? answers.csvPath.replace('~', os.homedir()) : path.resolve(answers.csvPath)) : '';
+
+            // Save the config to disk
+            fs.writeFileSync(activeConfigPath, JSON.stringify({ goal, metric, scope, csvPath }, null, 2));
+          }
+
+          // Format the trigger message perfectly with exact parameters, leaving ZERO room for LLM guesswork!
+          triggerMsg = `Launch the Autoresearch core loop to generate new testable marketing hypotheses.\n\n### EXPERIMENT CONFIGURATION\n- **Goal**: ${goal}\n- **Metric**: ${metric}\n- **Scope**: ${scope || 'None'}\n`;
+          if (csvPath) {
+            triggerMsg += `- **Prior Data File**: ${csvPath}\n- Please read and parse this file immediately: ${csvPath}\n`;
+          }
+        } else {
+          const arTriggerMap: Record<string, string> = {
+            'ar-plan':     'Help me plan a marketing experiment with Autoresearch.',
+            'ar-improve':  'Research my ICP and find growth opportunities with Autoresearch.',
+            'ar-learn':    'Analyze my competitors and market positioning with Autoresearch.',
+            'ar-predict':  'Assemble 5 marketing expert personas to evaluate my hypothesis with Autoresearch.',
+            'ar-probe':    'Have 8 marketing personas stress-test my campaign brief with Autoresearch.',
+            'ar-reason':   'Run an adversarial debate on this marketing strategy decision with Autoresearch.',
+            'ar-scenario': 'Generate what-if scenarios for my marketing plan with Autoresearch.',
+            'ar-evals':    'Analyze my past marketing experiment results with Autoresearch.',
+            'ar-debug':    'Debug why my marketing campaign is underperforming with Autoresearch.',
+            'ar-fix':      'Fix these known marketing asset issues one-by-one with Autoresearch.',
+            'ar-security': 'Run a brand safety and compliance audit on my marketing assets with Autoresearch.',
+            'ar-ship':     'Prepare my winning marketing assets for deployment with Autoresearch.',
+          };
+          triggerMsg = arTriggerMap[arAction] || '';
+        }
+
+        finalArgs = [triggerMsg];
       } else {
         const actionMap: Record<string, string[]> = {
           chat:         [],
