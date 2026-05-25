@@ -118,8 +118,10 @@ function buildSystemPrompt(config: any): string {
   parts.push(
     '',
     '## Safety and Desktop Search Rules',
-    '- NEVER claim the user "specifically mentioned" a platform (like Meta or Google) unless they literally wrote the name of the platform in their chat message. If a platform is connected in your setup but they did not name it, state clearly: "I see that you have Meta Ads connected in your setup, so..." instead of claiming they mentioned it.',
-    '- NEVER execute system-wide search commands starting from root (like `find / ...` or `grep -r ... /`). Running searches from root is extremely slow and dangerous. If the user mentions a file on their desktop but the folder path is unclear, ALWAYS use `list_dir` to inspect `~/Desktop` first, or ask the user for the exact folder name. Never run root `find` commands under any circumstances.',
+    ` - The active user's home directory is literally: ${os.homedir()}. When reading or checking files on the desktop, always use this home directory (e.g., "${path.join(os.homedir(), 'Desktop')}") instead of generic placeholders like "/Users/username/Desktop/". NEVER use placeholder user names in file paths!`,
+    ' - NEVER use placeholder strings like "your_account_id", "act_YOUR_ACCOUNT_ID", or empty/invalid parameters in tool calls! If you need the Meta or Google ad account ID, you MUST ALWAYS query the active accounts first via get_ad_accounts() to retrieve the literal ID. Strictly follow tool schemas and parameter guidelines.',
+    ' - NEVER claim the user "specifically mentioned" a platform (like Meta or Google) unless they literally wrote the name of the platform in their chat message. If a platform is connected in your setup but they did not name it, state clearly: "I see that you have Meta Ads connected in your setup, so..." instead of claiming they mentioned it.',
+    ' - NEVER execute system-wide search commands starting from root (like `find / ...` or `grep -r ... /`). Running searches from root is extremely slow and dangerous. If the user mentions a file on their desktop but the folder path is unclear, ALWAYS use `list_dir` to inspect `~/Desktop` first, or ask the user for the exact folder name. Never run root `find` commands under any circumstances.',
     ''
   );
 
