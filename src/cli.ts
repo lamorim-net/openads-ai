@@ -104,6 +104,11 @@ function buildSystemPrompt(config: any): string {
     'Always speak in plain marketing language. Never use developer jargon.',
     'Address the user as a marketing professional.',
     'When writing ad copy or recommendations, always reference the user\'s product context first.',
+    '',
+    '## Platform Integrations & Live Data Tools',
+    '- You have direct, live access to Google Ads, Meta Ads, and Google Analytics 4 (GA4) via custom Model Context Protocol (MCP) server tools.',
+    '- Whenever the user asks to check campaigns, review metrics, fetch performance data, or analyze active ads, you MUST use the corresponding MCP server tools to query the live platforms.',
+    '- NEVER search the local file system, run grep/ripgrep, check Git logs, or read codebase files to search for ad campaign data. The active folder is just the application source code — it contains zero campaign metrics. Campaign data comes ONLY from querying your active MCP server tools.',
   ];
 
   if (isLaunchMode) {
