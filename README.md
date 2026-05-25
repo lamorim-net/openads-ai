@@ -188,6 +188,19 @@ openads schedule remove   # Remove a schedule
 
 Uses your OS scheduler (macOS `launchd` / Linux `crontab`) — works even when your terminal is closed.
 
+---
+
+## 🛡️ Dual-Mode Safety (Audit vs. Launch)
+
+To align with our **Radical Simplicity & Safety by Default** principles, OpenAds operates in two visual modes to give you total control and peace of mind over your ad accounts:
+
+* **Audit Mode (Safe / Read-only — Recommended)**: Strict read-only guidelines. The AI can pull live campaign statistics, analyze keywords, find budget waste, and recommend landing page optimizations, but is entirely blocked from making active changes.
+* **Launch Mode (Read-Write)**: Active campaign changes. Authorizes write modifications (e.g. pausing campaigns, scaling bids, altering budgets, or testing ad creative) but strictly mandates a clear visual preview card and an explicit **confirmation prompt (Y/N)** before executing.
+
+Configure your default mode anytime by running `openads setup`.
+
+---
+
 ## 🔒 Security & Privacy
 
 - **Runs 100% locally.** OpenAds is not a cloud service. Nothing leaves your machine except the API calls you authorize.
@@ -239,6 +252,12 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 1. **Radical Simplicity** — Non-technical marketers must feel at home. No forcing users to learn code, prompt engineering, or API error messages.
 2. **Marketers First** — We design around marketing workflows (audits, copy, analysis), not software concepts.
 3. **Safety by Default** — AI should never spend money or publish campaigns without human approval.
+
+---
+
+## 👥 Core Team
+
+* **Luiz Amorim** — Creator & Maintainer ([lamorim.net](https://lamorim.net) | [LinkedIn](https://www.linkedin.com/in/luizamorim/))
 
 ---
 
