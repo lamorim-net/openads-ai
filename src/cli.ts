@@ -664,10 +664,20 @@ async function main() {
                 validate: (val) => {
                   if (!val.trim()) return true;
                   const resolved = val.startsWith('~') ? val.replace('~', os.homedir()) : path.resolve(val);
-                  if (!fs.existsSync(resolved)) {
-                    return `File not found at: ${resolved}. Please check the path.`;
+                  if (fs.existsSync(resolved)) return true;
+
+                  // Smart check standard folders
+                  const baseName = path.basename(resolved);
+                  const standardDirs = [
+                    path.join(os.homedir(), 'Desktop'),
+                    path.join(os.homedir(), 'Downloads'),
+                    path.join(os.homedir(), 'Documents')
+                  ];
+                  for (const dir of standardDirs) {
+                    if (fs.existsSync(path.join(dir, baseName))) return true;
                   }
-                  return true;
+
+                  return `File not found at: ${resolved}. Please check the path.`;
                 }
               }
             ]);
@@ -675,7 +685,36 @@ async function main() {
             goal = answers.goal;
             metric = answers.metric;
             scope = answers.scope || '';
-            csvPath = answers.csvPath ? (answers.csvPath.startsWith('~') ? answers.csvPath.replace('~', os.homedir()) : path.resolve(answers.csvPath)) : '';
+            
+            let rawPath = answers.csvPath ? answers.csvPath.trim() : '';
+            if (rawPath) {
+              let resolved = rawPath.startsWith('~') ? rawPath.replace('~', os.homedir()) : path.resolve(rawPath);
+              if (fs.existsSync(resolved)) {
+                csvPath = resolved;
+              } else {
+                // Resolve from standard directories
+                const baseName = path.basename(resolved);
+                const standardDirs = [
+                  path.join(os.homedir(), 'Desktop'),
+                  path.join(os.homedir(), 'Downloads'),
+                  path.join(os.homedir(), 'Documents')
+                ];
+                let found = false;
+                for (const dir of standardDirs) {
+                  const checkPath = path.join(dir, baseName);
+                  if (fs.existsSync(checkPath)) {
+                    csvPath = checkPath;
+                    console.log(chalk.cyan(`\n  💡 Smart-resolved file name to standard directory:`));
+                    console.log(`     ${chalk.green(csvPath)}\n`);
+                    found = true;
+                    break;
+                  }
+                }
+                if (!found) csvPath = resolved;
+              }
+            } else {
+              csvPath = '';
+            }
 
             // Save the config to disk
             fs.writeFileSync(activeConfigPath, JSON.stringify({ goal, metric, scope, csvPath }, null, 2));
