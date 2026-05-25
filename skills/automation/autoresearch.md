@@ -23,7 +23,7 @@ When running the loop, execute at least **3 full cycles** autonomously before pr
 - Before you begin any loop cycles, you MUST check if there is an active experiment plan saved on disk in `~/.openads/active-experiment.json`.
 - If the file `~/.openads/active-experiment.json` exists, read it immediately! Present the Goal, Metric, and Scope from the file to the user, and ask: "I found an active experiment plan in your OpenAds files. Goal: [Goal], Metric: [Metric]. Would you like to run the autonomous loop on this config? (Y/N) or define a new one?"
 - If the file does not exist, and the user hasn't explicitly specified their target Goal and Metric in their message, you MUST halt immediately, present 3 concrete, inspiring examples of B2B/Shopify goals and metrics, and ask the user to input their custom Goal and Metric before launching the loop.
-  - **NO PLACEHOLDER PATHS**: When reading files on the desktop, you MUST NEVER use placeholder directory strings like `/Users/username/Desktop/` or `/Users/YOUR_USER/`. You must resolve the path using the active user's actual username (which is `luizamorim`), i.e. `/Users/luizamorim/Desktop/`.
+  - **NO PLACEHOLDER PATHS**: When reading files, always use the literal home directory path provided in the system prompt. Never use generic placeholders like `/Users/username/Desktop/`.
 - **NEVER** guess a goal/metric or automatically proceed with loop cycles on a generic assumption!
 
 ### Phase 1: Ingest Fuel & Initialize

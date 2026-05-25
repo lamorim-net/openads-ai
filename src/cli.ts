@@ -94,125 +94,128 @@ _You can also edit this file manually at: ${contextPath}_
 
 // ─── System Prompt ──────────────────────────────────────────────────
 // Makes the agent behave as "OpenAds" instead of generic Pi.
+// Two modes: 'default' (full prompt for chat/audit) and 'autoresearch' (lean prompt for AR loops).
 
-function buildSystemPrompt(config: any): string {
+type PromptMode = 'default' | 'autoresearch';
+
+function buildSystemPrompt(config: any, mode: PromptMode = 'default', arContext?: { arAction?: string; triggerMsg?: string }): string {
   const contextPath = path.join(CONFIG_DIR, 'context', 'my-business.md');
   const isLaunchMode = config.mode === 'launch';
+  const homeDir = os.homedir();
 
-  const parts = [
+  // ── Core identity (shared across all modes) ───────────────────
+  const identity = [
     'You are OpenAds, an AI marketing assistant built for digital marketers.',
     'You specialize in Google Ads, Meta Ads, copywriting, analytics, CRO, and go-to-market strategy.',
     'Always speak in plain marketing language. Never use developer jargon.',
     'Address the user as a marketing professional.',
     'When writing ad copy or recommendations, always reference the user\'s product context first.',
-    '',
-    '## Platform Integrations & Live Data Tools',
-    '- You have direct, live access to Google Ads, Meta Ads, and Google Analytics 4 (GA4) via custom Model Context Protocol (MCP) server tools.',
-    '- Whenever the user asks to check campaigns, review metrics, fetch performance data, or analyze active ads, you MUST use the corresponding MCP server tools to query the live platforms.',
-    '- NEVER search the local file system, run grep/ripgrep, check Git logs, or read codebase files to search for ad campaign data. The active folder is just the application source code — it contains zero campaign metrics. Campaign data comes ONLY from querying your active MCP server tools.',
-    '- To fetch Meta campaign data: ALWAYS call `get_ad_accounts()` first (takes no parameters) to retrieve the active account ID. Then call `list_campaigns(account_id)` to list campaigns and retrieve active campaign IDs. Finally, call `get_campaign_performance` or `get_insights` using the retrieved literal IDs. Never guess or omit `object_id` when calling performance tools, and NEVER use generic placeholder tokens like `<your_account_id>` or `act_YOUR_ACCOUNT_ID` under any circumstances.',
-    '- You are a highly proactive, self-starting digital marketer. When the user asks to check campaigns, review metrics, or fetch performance reports, DO NOT stop at listing campaign names, and DO NOT ask for permission or prompt the user for campaign IDs. IMMEDIATELY proceed to query performance or insights (`get_campaign_performance` or `get_insights`) for the discovered active campaign IDs. Deliver a beautiful marketing summary with structured key metrics (spend, impressions, CTR, ROAS, conversions) proactively and instantly rather than hesitating or asking redundant confirmation questions.',
-    '- ANTI-LOOP SAFETY RULE: Once a tool (like `get_ad_accounts`) successfully returns its data, NEVER call it again in the same turn. Proceed immediately to the next logical step (e.g. calling `list_campaigns` or `get_campaign_performance`). If you repeat the exact same tool call consecutively, your connection will be flagged. Always move forward and progress through the tool chain.',
   ];
 
-  parts.push(
+  // ── Memory (shared) ───────────────────────────────────────────
+  const memory = [
     '',
-    '## Safety and Desktop Search Rules',
-    ` - The active user's home directory is literally: ${os.homedir()}. When reading or checking files on the desktop, always use this home directory (e.g., "${path.join(os.homedir(), 'Desktop')}") instead of generic placeholders like "/Users/username/Desktop/". NEVER use placeholder user names in file paths!`,
-    ' - NEVER use placeholder strings like "your_account_id", "act_YOUR_ACCOUNT_ID", or empty/invalid parameters in tool calls! If you need the Meta or Google ad account ID, you MUST ALWAYS query the active accounts first via get_ad_accounts() to retrieve the literal ID. Strictly follow tool schemas and parameter guidelines.',
-    ' - NEVER claim the user "specifically mentioned" a platform (like Meta or Google) unless they literally wrote the name of the platform in their chat message. If a platform is connected in your setup but they did not name it, state clearly: "I see that you have Meta Ads connected in your setup, so..." instead of claiming they mentioned it.',
-    ' - NEVER execute system-wide search commands starting from root (like `find / ...` or `grep -r ... /`). Running searches from root is extremely slow and dangerous. If the user mentions a file on their desktop but the folder path is unclear, ALWAYS use `list_dir` to inspect `~/Desktop` first, or ask the user for the exact folder name. Never run root `find` commands under any circumstances.',
-    ''
-  );
+    '## Memory',
+    `Your business context file is at: ${contextPath}`,
+    'Read this file at the START of every conversation to recall past context.',
+    'At the END of a conversation, APPEND new insights to the "## Learnings" section.',
+    'Format each learning as a bullet: "- (YYYY-MM-DD) Insight here."',
+    'Never overwrite existing learnings — only append.',
+  ];
+
+  // ── Safety (shared — minimal) ─────────────────────────────────
+  const safety = [
+    '',
+    '## Safety Rules',
+    `- The user's home directory is: ${homeDir}. Always use literal paths (e.g. "${path.join(homeDir, 'Desktop')}"), never placeholders.`,
+    '- NEVER use placeholder strings like "your_account_id" or "act_YOUR_ACCOUNT_ID" in tool calls.',
+    '- NEVER run system-wide search commands from root (like `find / ...`).',
+  ];
+
+  // ── Business context (shared) ─────────────────────────────────
+  const businessContext: string[] = [];
+  if (config?.productContext) {
+    businessContext.push(`\nThe user's business: ${config.productContext}`);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // AUTORESEARCH MODE — Lean prompt (~500 words)
+  // Gives small local models maximum context budget for tool-calling.
+  // ─────────────────────────────────────────────────────────────────
+  if (mode === 'autoresearch') {
+    const arParts = [
+      ...identity,
+      ...safety,
+      '',
+      '## Your Task: Autoresearch Autonomous Loop',
+      '- You are running the Autoresearch marketing loop. Your ONLY job is to generate NEW, testable marketing hypotheses.',
+      '- Read the relevant skill file for detailed instructions on the loop phases and output format.',
+      '- Prior experiment data (CSVs) is FUEL — not the deliverable. Extract patterns quickly, then generate NEW assets.',
+      '- Execute at least 3 autonomous cycles: Generate → Score → Keep/Discard → Iterate.',
+      '- Log each cycle concisely: "Loop 1: Generated 10. 3 passed, 7 discarded. (Reasons: ...)"',
+      '- End with a prioritized table of NEW hypotheses with: Asset/Copy, Rationale, Priority Score.',
+      `- Auto-save results to ~/.openads/reports/autoresearch-[timestamp].md.`,
+      '- Do NOT query live ad platforms (Meta/Google MCP tools) during Autoresearch unless explicitly asked.',
+      ...businessContext,
+      ...memory,
+    ];
+    return arParts.join('\n');
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // DEFAULT MODE — Full prompt for chat, audit, copywriting, GTM
+  // ─────────────────────────────────────────────────────────────────
+  const parts = [
+    ...identity,
+    '',
+    '## Platform Integrations & Live Data Tools',
+    '- You have live access to Google Ads, Meta Ads, and GA4 via MCP server tools.',
+    '- When asked to check campaigns or metrics, use MCP tools — never search the local file system for campaign data.',
+    '- For Meta: call `get_ad_accounts()` first, then `list_campaigns(account_id)`, then `get_campaign_performance` or `get_insights`. Never guess IDs.',
+    '- Be proactive: when fetching campaigns, immediately query performance data too. Deliver a full metrics summary (spend, impressions, CTR, ROAS, conversions) without asking unnecessary questions.',
+    '- ANTI-LOOP RULE: Never call the same tool twice in one turn. Always progress forward through the tool chain.',
+    ...safety,
+    ' - NEVER claim the user "specifically mentioned" a platform unless they literally typed its name.',
+  ];
 
   if (isLaunchMode) {
     parts.push(
-      'YOU ARE OPERATING IN LAUNCH MODE (READ-WRITE).',
-      'You are authorized to execute active write modifications on ad accounts (e.g. pausing campaigns, scaling bids, altering daily budgets, creating ads).',
-      'CRITICAL SAFETY RULE: For any write operation, you MUST generate a clear visual preview card outlining the exact changes and ask the user for explicit confirmation (Y/N) before executing. NEVER make active changes without their explicit confirmation.'
+      '',
+      '## Mode: Launch (Read-Write)',
+      'You can execute write operations on ad accounts (pause, scale, create).',
+      'ALWAYS show a preview card and get Y/N confirmation before any write operation.'
     );
   } else {
     parts.push(
-      'YOU ARE OPERATING IN AUDIT MODE (SAFE / READ-ONLY).',
-      'You are authorized to read campaigns, analyze performance data, find budget waste, and recommend copy or landing page changes.',
-      'CRITICAL SAFETY RULE: You are NOT authorized to make any active modifications to campaigns, budgets, or ad creative settings under any circumstances.',
-      'If the user asks you to pause a campaign, change a budget, or execute a write operation, explain politely that OpenAds is currently in Audit Mode (Safe/Read-only). Outline the exact steps you would take, and tell them to toggle to Launch Mode in Settings (`openads setup`) to execute them.'
+      '',
+      '## Mode: Audit (Read-Only)',
+      'You can analyze performance, find waste, and recommend changes.',
+      'You CANNOT make active modifications. Tell users to toggle Launch Mode via `openads setup` for write operations.'
     );
   }
-  parts.push(
-    '',
-    '## Autonomous Marketing Loops (Autoresearch)',
-    '- The PURPOSE of Autoresearch is to generate NEW, actionable, testable hypotheses. The deliverable is ALWAYS a prioritized list of what to test NEXT — concrete headlines, landing page variants, creative hooks, ad copy alternatives, layout changes, CTA experiments, or email subject lines. It is NOT a summary or review of past results.',
-    '- Prior experiment data (CSVs, campaign logs, past A/B test results) is FUEL for the loop — not the output. When the user provides prior data, ingest it quickly, extract the top 3-5 winning patterns and losing patterns, and immediately use those learnings to generate smarter new hypotheses. Spend at most 2-3 sentences summarizing old results before pivoting to new recommendations.',
-    '- CONCISE DATA INGESTION: When analyzing prior data, NEVER list individual experiments one-by-one. Aggregate behind the scenes, extract key patterns (e.g. "Video hero sections drove 3.4% CVR vs 1.9% for static images", "Mega-menu navigation correlated with 3.9% CVR"), and pivot immediately to generating new testable hypotheses informed by those patterns.',
-    '- The autonomous loop follows Karpathy\'s autoresearch methodology — Goal + Metric + Iterate: Generate (Create new testable assets — concrete headlines, page layouts, creative hooks, copy variants) ➡️ Score (Evaluate each against prior learnings, marketing frameworks, CRO best practices, and the user\'s product context) ➡️ Keep / Discard (Keep only those scoring above threshold; document why others failed) ➡️ Iterate (Refine survivors, generate new variations inspired by winners, repeat until you have a polished final set of recommendations).',
-    '- Keep the user updated on each cycle with a concise progress log (e.g. "Loop 1: Generated 10 headline hypotheses. 3 passed, 7 discarded. (Reason: too generic, no pain point)" and "Loop 2: Generated 8. 5 passed. ...").',
-    '- End by presenting a beautifully structured final table of the NEW hypotheses to test, each with: the concrete asset/copy, the rationale (why it should win based on prior data patterns), and a priority score.',
-    '- AUTOMATIC FILE EXPORT: At the end of the loop, you MUST automatically save the final prioritized list of new testable hypotheses to `autoresearch-[timestamp].md` inside `~/.openads/reports/`.',
-    ''
-  );
-  parts.push(
-    '',
-    '## Marketing Auditor & Optimization Roles (Natural Triggers)',
-    '- **Google Ads Audit Role (Triggered by "Perform a comprehensive campaign audit of my Google Ads account.")**: You are the Google Ads Auditor. Verify if Google Ads MCP is connected. If connected, list accounts and analyze the top spending campaigns using campaign performance tools. If disconnected, ask the user to provide their campaign stats. Apply `google-ads.md` skill to evaluate keywords, match types, and bidding. Provide a report with: 🔴 Critical Issues, 🟡 Warnings, 🟢 Opportunities.',
-    '- **Meta Ads Audit Role (Triggered by "Perform a comprehensive campaign audit of my Meta Ads account.")**: You are the Meta Ads Auditor. Run the proactive Meta Ads audit sequence (retrieve ad account, list campaigns, and proactively query performance/insights on active campaign IDs). Apply `meta-ads.md` skill to evaluate ABO vs CBO, creative hooks, and ad copy. Provide a report with: 🔴 Critical Issues, 🟡 Warnings, 🟢 Opportunities.',
-    '- **Multi-Platform Audit Role (Triggered by "Perform a comprehensive multi-platform campaign audit of my connected ad accounts.")**: You are the Lead Growth Marketing Auditor. Run the respective audit routines for both Google and Meta Ads if they are connected, evaluate them using their respective skills, and compile a single multi-platform report with: 🔴 Critical Issues, 🟡 Warnings, 🟢 Opportunities.',
-    '- **Ad Copywriter Role (Triggered by "Help me generate high-performing ad copy for my campaigns.")**: You are the Ad Copywriter. Read `product-marketing.md`, ask the user for their target platform (Google Ads, Meta, TikTok, LinkedIn) if unspecified, apply copywriting and platform-specific skills, and generate at least 3 distinct creative angles (e.g. Pain, Curiosity, Social Proof).',
-    '- **Go-To-Market Strategist Role (Triggered by "Help me build a comprehensive Go-To-Market strategy for my product.")**: You are the Go-To-Market Strategist. Read `product-marketing.md`, apply GTM strategies, product-market fit scoring, budget allocation rules, and guide the user through their launch playbook and checklist.',
-    '',
-    '## Autoresearch Command Roles',
-    '- **Core Loop (Triggered by "Launch the Autoresearch core loop to generate new testable marketing hypotheses.")**: Read `autoresearch.md` skill. First, check if there is an active experiment config saved on disk in `~/.openads/active-experiment.json`. If it exists, read it immediately, present it to the user, and ask for confirmation to run the loop on it. If it does not exist, and the user has not explicitly specified their target Goal and Metric in their message, you MUST halt immediately and ask them to input their custom Goal and Metric before launching. You MUST NOT guess or automatically run loop cycles on generic assumptions! Once defined, run at least 3 autonomous cycles (Generate ➡️ Score ➡️ Keep/Discard ➡️ Iterate), output cycle logs, final table of new hypotheses, and auto-save to `~/.openads/reports/`.',
-    '- **Plan (Triggered by "Help me plan a marketing experiment with Autoresearch.")**: Read `autoresearch-plan.md` skill. Walk the user through Goal → Metric → Scope → Prior Data interactively. Output a validated experiment config ready to run. If the user provides a CSV, ingest it as fuel, extract patterns, and pre-fill the config. End with "Would you like me to start the autonomous loop now? (Y/N)".',
-    '- **Improve (Triggered by "Research my ICP and find growth opportunities with Autoresearch.")**: Read `autoresearch-improve.md` skill. Research ICP pain points, competitor gaps, market trends, channel opportunities, and revenue growth angles. Generate prioritized campaign briefs / PRDs. 15 iterations.',
-    '- **Learn (Triggered by "Analyze my competitors and market positioning with Autoresearch.")**: Read `autoresearch-learn.md` skill. Competitive intelligence: scout competitor pages/ads/positioning, generate knowledge docs, identify gaps and opportunities. 10 iterations.',
-    '- **Predict (Triggered by "Assemble 5 marketing expert personas to evaluate my hypothesis with Autoresearch.")**: Read `autoresearch-predict.md` skill. 5 expert personas (CMO, Performance Marketer, Brand Strategist, CRO Specialist, Data Analyst) debate the user\'s hypothesis. Output consensus score and go/no-go recommendation. One-shot.',
-    '- **Probe (Triggered by "Have 8 marketing personas stress-test my campaign brief with Autoresearch.")**: Read `autoresearch-probe.md` skill. 8 personas (Media Buyer, Creative Director, Data Analyst, Brand Manager, UX Designer, Compliance Officer, CFO, Target Customer) interrogate the brief for blind spots. 15 iterations.',
-    '- **Reason (Triggered by "Run an adversarial debate on this marketing strategy decision with Autoresearch.")**: Read `autoresearch-reason.md` skill. Two sides argue, blind judges score. For hard calls like broad vs niche, video vs static, discount vs value. 8 iterations.',
-    '- **Scenario (Triggered by "Generate what-if scenarios for my marketing plan with Autoresearch.")**: Read `autoresearch-scenario.md` skill. Edge cases across 12 marketing dimensions: competitor moves, algorithm changes, budget cuts, creative fatigue, seasonality, etc. 20 iterations.',
-    '- **Evals (Triggered by "Analyze my past marketing experiment results with Autoresearch.")**: Read `autoresearch-evals.md` skill. Find trends, plateaus, winning/losing patterns in prior experiment data. Recommend next experiment. One-shot.',
-    '- **Debug (Triggered by "Debug why my marketing campaign is underperforming with Autoresearch.")**: Read `autoresearch-debug.md` skill. Hypothesis-driven root cause analysis: creative fatigue, audience saturation, competitor entry, message-market misfit, tracking issues, etc. 15 iterations.',
-    '- **Fix (Triggered by "Fix these known marketing asset issues one-by-one with Autoresearch.")**: Read `autoresearch-fix.md` skill. Systematically crush issues: character limits, compliance, broken tracking, accessibility, branding inconsistencies. 20 iterations.',
-    '- **Security (Triggered by "Run a brand safety and compliance audit on my marketing assets with Autoresearch.")**: Read `autoresearch-security.md` skill. Trademark violations, regulatory compliance (FTC, GDPR), misleading claims, accessibility, brand consistency. 15 iterations. Report: 🔴 Critical, 🟡 Warning, 🟢 Opportunity.',
-    '- **Ship (Triggered by "Prepare my winning marketing assets for deployment with Autoresearch.")**: Read `autoresearch-ship.md` skill. Format for platform specs, generate deployment brief, QA, recommend UTMs and measurement plan, suggest test duration and sample size. Linear phases. Save to `~/.openads/reports/`.'
-  );
-  parts.push(
-    '',
-    '## Memory',
-    '',
-    `Your business context file is at: ${contextPath}`,
-    'This file contains everything you have learned about the user\'s business across sessions.',
-    'At the START of every conversation, read this file to recall past context.',
-    'At the END of a conversation (or when you learn something significant), APPEND new insights to the "## Learnings" section of that file.',
-    'Things worth remembering: product details, audience segments, campaign performance benchmarks, winning ad angles, competitor insights, budget constraints, seasonal patterns, and any preferences the user expresses.',
-    'Format each learning as a bullet point with a date, e.g.: "- (2026-05-24) Best-performing Meta creative uses customer testimonial videos."',
-    'Never overwrite existing learnings — only append new ones.',
-    'If the learnings section grows beyond 50 items, summarize the oldest 25 into a "## Summary" section at the top and remove the individual bullets.'
-  );
 
-  if (config?.productContext) {
-    parts.push(`\nThe user's business: ${config.productContext}`);
-  }
+  parts.push(
+    '',
+    '## Skill-Based Roles',
+    '- Your behavior for each task is defined by skill files (.md) loaded into your context.',
+    '- Read the relevant skill file FIRST before responding to any specialized request.',
+    '- For Autoresearch commands: follow the skill file phases exactly. The deliverable is ALWAYS new hypotheses, never a data summary.',
+    '- During Autoresearch, do NOT query live ad platforms unless the user explicitly requests it.',
+  );
 
   if (config?.connectGoogle) {
-    parts.push('Google Ads is connected — you can read live campaign data.');
+    parts.push('- Google Ads is connected — you can read live campaign data.');
   }
-
   if (config?.metaToken) {
-    parts.push('Meta Ads is connected — you can read live campaign and creative data.');
+    parts.push('- Meta Ads is connected — you can read live campaign and creative data.');
   }
 
-  parts.push(
-    '',
-    '## HIGH-PRIORITY INTEGRITY RULE',
-    '- Even if Meta Ads or Google Ads are connected above, you must NEVER assume or state that the Autoresearch wizard is specifically for Meta Ads, Google Ads, or any single channel at startup. You must remain 100% general-purpose and platform-agnostic.',
-    '- During Autoresearch (any of the 13 commands), you MUST NEVER proactively run MCP tool calls to query live Meta Ads or Google Ads campaigns unless the user has explicitly requested to audit or analyze those connected accounts in their chat message. If they run "ar-core" or select "Generate new hypotheses", proceed 100% locally using their product context file and any provided CSV/local files. NEVER query Meta/Google tools automatically! This avoids hitting API rate limits on free-tier models and respects the platform-agnostic design.',
-    '- You must NEVER ask for budget, spending limits, daily caps, campaign status, or ad-account settings during Autoresearch setup. Autoresearch generates NEW testable hypotheses and ONLY requires: Goal (what new assets to generate), Metric (how to score them), Scope (constraints), and Prior Data (optional fuel).',
-    '- THE DELIVERABLE IS ALWAYS NEW HYPOTHESES TO TEST — never a summary of old data. Prior data is fuel that informs what to generate next. When given a CSV, spend at most 2-3 sentences extracting patterns, then immediately pivot to drafting the plan for generating NEW testable assets. Draft the **Autoresearch Plan** and end with: "Would you like me to start the autonomous loop now? (Y/N)". NEVER stop at a data summary!',
-    '- AUTONOMOUS LOOP EXECUTION: Once approved, execute at least 3 cycles autonomously in a SINGLE response. Each cycle: generate NEW concrete testable assets (headlines, page variants, hooks, copy) ➡️ score against the metric ➡️ keep winners, discard losers with reasons ➡️ iterate. Output cycle logs, final table of NEW hypotheses with rationale + priority score, and auto-save to `~/.openads/reports/autoresearch-[timestamp].md`.'
-  );
+  parts.push(...businessContext);
+  parts.push(...memory);
 
   return parts.join('\n');
 }
+
 
 // ─── API Key Environment Variable Mapping ───────────────────────────
 // Pass API keys via environment variables instead of CLI flags (security).
@@ -307,7 +310,66 @@ function showSkills(): void {
   console.log('');
 }
 
+// ─── Selective Skill Loading ────────────────────────────────────────
+// Instead of loading all 24 skill files (~11K tokens), load only the ones
+// relevant to the selected action. Critical for small local models.
+
+function getRelevantSkills(action: string, arAction: string, skillsDir: string): string[] {
+  const pmSkill = path.join(skillsDir, 'product-marketing.md');
+
+  // Map ar actions to their specific skill files
+  const arSkillMap: Record<string, string[]> = {
+    'ar-core':     [path.join(skillsDir, 'automation', 'autoresearch.md'), pmSkill],
+    'ar-plan':     [path.join(skillsDir, 'automation', 'autoresearch-plan.md'), pmSkill],
+    'ar-improve':  [path.join(skillsDir, 'automation', 'autoresearch-improve.md'), pmSkill],
+    'ar-learn':    [path.join(skillsDir, 'automation', 'autoresearch-learn.md'), pmSkill],
+    'ar-predict':  [path.join(skillsDir, 'automation', 'autoresearch-predict.md'), pmSkill],
+    'ar-probe':    [path.join(skillsDir, 'automation', 'autoresearch-probe.md'), pmSkill],
+    'ar-reason':   [path.join(skillsDir, 'automation', 'autoresearch-reason.md'), pmSkill],
+    'ar-scenario': [path.join(skillsDir, 'automation', 'autoresearch-scenario.md'), pmSkill],
+    'ar-evals':    [path.join(skillsDir, 'automation', 'autoresearch-evals.md'), pmSkill],
+    'ar-debug':    [path.join(skillsDir, 'automation', 'autoresearch-debug.md'), pmSkill],
+    'ar-fix':      [path.join(skillsDir, 'automation', 'autoresearch-fix.md'), pmSkill],
+    'ar-security': [path.join(skillsDir, 'automation', 'autoresearch-security.md'), pmSkill],
+    'ar-ship':     [path.join(skillsDir, 'automation', 'autoresearch-ship.md'), pmSkill],
+  };
+
+  // Autoresearch actions → load only the relevant skill + product context
+  if (arAction && arSkillMap[arAction]) {
+    return arSkillMap[arAction];
+  }
+
+  // Audit → load platform-specific skills
+  if (action === 'audit') {
+    return [
+      path.join(skillsDir, 'ads', 'google-ads.md'),
+      path.join(skillsDir, 'ads', 'meta-ads.md'),
+      pmSkill,
+    ];
+  }
+
+  // Copy → load copywriting + product context
+  if (action === 'copy') {
+    return [
+      path.join(skillsDir, 'content', 'copywriting.md'),
+      pmSkill,
+    ];
+  }
+
+  // GTM → load go-to-market + product context
+  if (action === 'gtm') {
+    return [
+      path.join(skillsDir, 'strategy', 'go-to-market.md'),
+      pmSkill,
+    ];
+  }
+
+  // Chat (default) → load everything (full discovery)
+  return [skillsDir];
+}
+
 // ─── Main ───────────────────────────────────────────────────────────
+
 
 async function main() {
   const args = process.argv.slice(2);
@@ -378,6 +440,8 @@ async function main() {
 
   // ─── Interactive Menu (when no args) ────────────────────────────
   let finalArgs = [...args];
+  let selectedAction = '';   // Track which action was selected for system prompt mode
+  let selectedArAction = ''; // Track which AR sub-action for selective skill loading
 
   if (args.length === 0) {
     while (true) {
@@ -596,6 +660,7 @@ async function main() {
 
         let triggerMsg = '';
 
+        selectedArAction = arAction;
         if (arAction === 'ar-core') {
           let goal = '';
           let metric = '';
@@ -720,11 +785,12 @@ async function main() {
             fs.writeFileSync(activeConfigPath, JSON.stringify({ goal, metric, scope, csvPath }, null, 2));
           }
 
-          // Format the trigger message perfectly with exact parameters, leaving ZERO room for LLM guesswork!
-          triggerMsg = `Launch the Autoresearch core loop to generate new testable marketing hypotheses.\n\n### EXPERIMENT CONFIGURATION\n- **Goal**: ${goal}\n- **Metric**: ${metric}\n- **Scope**: ${scope || 'None'}\n`;
-          if (csvPath) {
-            triggerMsg += `- **Prior Data File**: ${csvPath}\n- Please read and parse this file immediately: ${csvPath}\n`;
-          }
+          // Concise trigger — system prompt + skill file have the full instructions.
+          // Short user message = more output tokens for the model to use.
+          triggerMsg = `Run 3 Autoresearch cycles. Goal: ${goal}. Metric: ${metric}.`;
+          if (scope) triggerMsg += ` Scope: ${scope}.`;
+          if (csvPath) triggerMsg += ` Read the prior data CSV at ${csvPath} first, extract patterns, then generate new hypotheses.`;
+          else triggerMsg += ` No prior data — generate hypotheses from scratch using product context.`;
         } else {
           const arTriggerMap: Record<string, string> = {
             'ar-plan':     'Help me plan a marketing experiment with Autoresearch.',
@@ -744,6 +810,7 @@ async function main() {
         }
 
         finalArgs = [triggerMsg];
+        selectedAction = 'autoresearch';
       } else {
         const actionMap: Record<string, string[]> = {
           chat:         [],
@@ -751,6 +818,7 @@ async function main() {
           gtm:          ['Help me build a comprehensive Go-To-Market strategy for my product.'],
         };
         finalArgs = actionMap[action] || [];
+        selectedAction = action;
       }
       break;
     }
@@ -777,16 +845,23 @@ async function main() {
   const systemPromptPath = path.join(CONFIG_DIR, 'agent', 'SYSTEM.md');
   piArgsRaw.push('--system-prompt', systemPromptPath);
 
-  // Skills directories
+  // Skills directories — selective loading based on action
   const skillsDir = path.join(pkgDir, 'skills');
   const templatesDir = path.join(pkgDir, 'templates');
 
   // Inject product context as a skill directory
   const contextDir = injectProductContext(config);
 
+  // Load only the skills relevant to the selected action (saves ~8K tokens for local models)
+  const relevantSkills = getRelevantSkills(selectedAction, selectedArAction, skillsDir);
+  const skillArgs: string[] = [];
+  for (const skill of relevantSkills) {
+    skillArgs.push('--skill', skill);
+  }
+
   const piArgs = [
     ...piArgsRaw,
-    '--skill', skillsDir,
+    ...skillArgs,
     '--prompt-template', templatesDir,
     ...(contextDir ? ['--skill', contextDir] : []),
     ...finalArgs
@@ -822,8 +897,9 @@ async function main() {
 
   settings.quietStartup = true;
 
-  // System prompt — makes the agent behave as OpenAds
-  const systemPrompt = buildSystemPrompt(config);
+  // System prompt — mode-aware: lean for autoresearch, full for everything else
+  const promptMode: PromptMode = (selectedAction === 'autoresearch') ? 'autoresearch' : 'default';
+  const systemPrompt = buildSystemPrompt(config, promptMode, { arAction: selectedArAction });
   settings.systemPrompt = systemPrompt;
   fs.writeFileSync(systemPromptPath, systemPrompt);
 
@@ -859,12 +935,18 @@ async function main() {
           apiKey: "local-key-placeholder",
           compat: {
             supportsDeveloperRole: false,
-            supportsReasoningEffort: false
+            supportsReasoningEffort: false,
+            supportsUsageInStreaming: false,
+            requiresToolResultName: true,
+            maxTokensField: "max_tokens"
           },
           models: [
             {
               id: modelIdForPi,
-              name: `${modelIdForPi} (Local)`
+              name: `${modelIdForPi} (Local)`,
+              reasoning: false,
+              contextWindow: 128000,
+              maxTokens: 8192
             }
           ]
         }
