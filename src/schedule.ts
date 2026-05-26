@@ -247,6 +247,8 @@ function uninstallCrontab(name: string): void {
 }
 
 // ─── Run a Scheduled Task ────────────────────────────────────────────
+// Applies the same mode-aware prompt + selective skill loading as the main CLI
+// so scheduled tasks work reliably on local models.
 
 export async function runScheduledTask(name: string): Promise<void> {
   const schedules = loadSchedules();
@@ -292,26 +294,83 @@ export async function runScheduledTask(name: string): Promise<void> {
     env.OPENAI_API_KEY = env.OPENAI_API_KEY || 'sk-local-ai-key-placeholder';
   }
 
+  const isLocal = !!config.localBaseUrl;
+  const cleanModel = config.provider;
+  const modelIdForPi = isLocal && cleanModel.includes('/') ? cleanModel.split('/')[1] : cleanModel;
+
   const skillsDir = path.resolve(pkgDir, 'skills');
   const contextDir = path.join(CONFIG_DIR, 'context');
 
-  const cleanModel = config.provider;
-  const isLocal = !!config.localBaseUrl;
-  const modelIdForPi = isLocal && cleanModel.includes('/') ? cleanModel.split('/')[1] : cleanModel;
+  // ─── Mode-aware system prompt ───────────────────────────────────────
+  // Scheduled audit tasks use the 'default' prompt mode (they need MCP tools).
+  // Write a temporary system prompt file for this run.
+  const agentDir = path.join(CONFIG_DIR, 'agent');
+  if (!fs.existsSync(agentDir)) fs.mkdirSync(agentDir, { recursive: true });
+
+  const homeDir = os.homedir();
+  const contextPath = path.join(CONFIG_DIR, 'context', 'my-business.md');
+  const isLaunchMode = config.mode === 'launch';
+
+  const scheduleSystemPrompt = [
+    'You are OpenAds, an AI marketing assistant. You are running a scheduled automated task.',
+    'Your job: execute the task concisely and produce a clean, structured markdown report.',
+    'Use MCP tools to query live campaign data. Never use placeholder IDs.',
+    '',
+    '## Platform Tools',
+    '- For Meta: call get_ad_accounts() first (no params), then list_campaigns(account_id), then get_campaign_performance or get_insights.',
+    '- Anti-loop rule: never call the same tool twice in one turn.',
+    '',
+    '## Output Rules',
+    '- Structure your output as a clean markdown report with headers, tables, and bullet points.',
+    '- Flag issues clearly: 🔴 Critical | 🟡 Warning | 🟢 Opportunity.',
+    '- End with a numbered list of recommended actions.',
+    '',
+    `## Safety`,
+    `- Home directory: ${homeDir}. Never use placeholder paths.`,
+    isLaunchMode
+      ? '- Mode: Launch (Read-Write). Show a preview card and get Y/N before any write operation.'
+      : '- Mode: Audit (Read-Only). You can only read and analyze — no writes.',
+    '',
+    `## Business Context`,
+    fs.existsSync(contextPath)
+      ? `Read your business context file at ${contextPath} before starting.`
+      : 'No business context file found. Proceed with the task using available data.',
+  ].join('\n');
+
+  const scheduleSysPromptPath = path.join(agentDir, 'SCHEDULE-SYSTEM.md');
+  fs.writeFileSync(scheduleSysPromptPath, scheduleSystemPrompt);
+
+  // ─── Selective skill loading ────────────────────────────────────────
+  // Scheduled tasks are audit-type by default → load only the 3 ad platform skills.
+  // This saves ~7K tokens vs loading all 24 skills.
+  const scheduleSkills = [
+    path.join(skillsDir, 'ads', 'google-ads.md'),
+    path.join(skillsDir, 'ads', 'meta-ads.md'),
+    path.join(skillsDir, 'product-marketing.md'),
+  ].filter(p => fs.existsSync(p));
+
+  const skillArgs: string[] = [];
+  for (const skill of scheduleSkills) {
+    skillArgs.push('--skill', skill);
+  }
 
   const args = [
     piCliPath,
     '--model', modelIdForPi,
-    '--skill', skillsDir,
+    '--system-prompt', scheduleSysPromptPath,
+    ...skillArgs,
     ...(fs.existsSync(contextDir) ? ['--skill', contextDir] : []),
     '--print',
     schedule.prompt,
   ];
 
+  // Local models may be slow — give them up to 10 minutes
+  const timeoutMs = isLocal ? 600000 : 300000;
+
   const result = spawnSync('node', args, {
     env,
     encoding: 'utf8',
-    timeout: 300000, // 5 minute timeout
+    timeout: timeoutMs,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 

@@ -92,6 +92,21 @@ _You can also edit this file manually at: ${contextPath}_
   return contextDir;
 }
 
+// ─── Model Capability Detection ─────────────────────────────────────
+
+function getModelLabel(config: any): string {
+  const isLocal = !!config.localBaseUrl;
+  const provider = config.provider || '';
+  if (isLocal) {
+    const modelId = provider.includes('/') ? provider.split('/').pop() : provider;
+    return `${modelId} ${chalk.gray('(Local)')}` ;
+  }
+  // Cloud models — extract friendly name
+  const parts = provider.split('/');
+  const modelId = parts[parts.length - 1] || provider;
+  return chalk.cyan.bold(modelId);
+}
+
 // ─── System Prompt ──────────────────────────────────────────────────
 // Makes the agent behave as "OpenAds" instead of generic Pi.
 // Two modes: 'default' (full prompt for chat/audit) and 'autoresearch' (lean prompt for AR loops).
@@ -164,6 +179,9 @@ function buildSystemPrompt(config: any, mode: PromptMode = 'default', arContext?
 
   // ─────────────────────────────────────────────────────────────────
   // DEFAULT MODE — Full prompt for chat, audit, copywriting, GTM
+  // Role trigger catalogs and AR philosophy removed — the CLI handles
+  // routing and skill files contain the detailed instructions.
+  // Target: ~700 words. Every word earns its place.
   // ─────────────────────────────────────────────────────────────────
   const parts = [
     ...identity,
@@ -171,11 +189,11 @@ function buildSystemPrompt(config: any, mode: PromptMode = 'default', arContext?
     '## Platform Integrations & Live Data Tools',
     '- You have live access to Google Ads, Meta Ads, and GA4 via MCP server tools.',
     '- When asked to check campaigns or metrics, use MCP tools — never search the local file system for campaign data.',
-    '- For Meta: call `get_ad_accounts()` first, then `list_campaigns(account_id)`, then `get_campaign_performance` or `get_insights`. Never guess IDs.',
-    '- Be proactive: when fetching campaigns, immediately query performance data too. Deliver a full metrics summary (spend, impressions, CTR, ROAS, conversions) without asking unnecessary questions.',
-    '- ANTI-LOOP RULE: Never call the same tool twice in one turn. Always progress forward through the tool chain.',
+    '- For Meta: call `get_ad_accounts()` first (no params), then `list_campaigns(account_id)`, then `get_campaign_performance` or `get_insights`. Never guess or invent IDs.',
+    '- Proactive rule: once you have campaigns, immediately fetch performance. Deliver a full metrics summary (spend, impressions, CTR, ROAS, conversions) without asking permission.',
+    '- Anti-loop rule: never call the same tool twice in a single turn. Progress forward always.',
     ...safety,
-    ' - NEVER claim the user "specifically mentioned" a platform unless they literally typed its name.',
+    '- NEVER claim the user "specifically mentioned" a platform unless they literally typed its name in their message.',
   ];
 
   if (isLaunchMode) {
@@ -183,24 +201,25 @@ function buildSystemPrompt(config: any, mode: PromptMode = 'default', arContext?
       '',
       '## Mode: Launch (Read-Write)',
       'You can execute write operations on ad accounts (pause, scale, create).',
-      'ALWAYS show a preview card and get Y/N confirmation before any write operation.'
+      'ALWAYS show a concrete preview card and get explicit Y/N confirmation before any write operation. Never execute without confirmation.'
     );
   } else {
     parts.push(
       '',
       '## Mode: Audit (Read-Only)',
-      'You can analyze performance, find waste, and recommend changes.',
-      'You CANNOT make active modifications. Tell users to toggle Launch Mode via `openads setup` for write operations.'
+      'You can analyze performance, find waste, and recommend changes. You CANNOT make active modifications.',
+      'If asked to execute a write operation, explain Audit Mode and tell the user to run `openads setup` to enable Launch Mode.'
     );
   }
 
   parts.push(
     '',
-    '## Skill-Based Roles',
-    '- Your behavior for each task is defined by skill files (.md) loaded into your context.',
-    '- Read the relevant skill file FIRST before responding to any specialized request.',
-    '- For Autoresearch commands: follow the skill file phases exactly. The deliverable is ALWAYS new hypotheses, never a data summary.',
-    '- During Autoresearch, do NOT query live ad platforms unless the user explicitly requests it.',
+    '## Your Skills',
+    '- Skill files (.md) are loaded into your context for the active task. Read them first.',
+    '- Key skills available: Google Ads, Meta Ads, Copywriting, CRO, Email, Video Ads, Analytics, Competitor Research, Customer Research, Go-To-Market, Autoresearch loops.',
+    '- For copywriting: use PAS/AIDA frameworks, platform character limits, and the user\'s product context.',
+    '- For audits: flag 🔴 Critical Issues, 🟡 Warnings, 🟢 Opportunities.',
+    '- For Autoresearch: the deliverable is ALWAYS new testable hypotheses — never a data summary. Follow the skill file phases.',
   );
 
   if (config?.connectGoogle) {
@@ -422,15 +441,17 @@ async function main() {
   const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
 
   const cleanProvider = resolveModel(config.provider);
-  const modelName = chalk.cyan.bold(cleanProvider);
+  const isLocalModel = !!config.localBaseUrl;
+  const modelName = getModelLabel(config);
   const googleStatus = config.connectGoogle ? chalk.green('● Connected') : chalk.gray('○ Not connected');
   const metaStatus = config.metaToken ? chalk.green('● Connected') : chalk.gray('○ Not connected');
 
   const modeName = config.mode === 'launch' ? chalk.red.bold('Launch Mode (Read-Write)') : chalk.green.bold('Audit Mode (Safe / Read-only)');
+  const modelTypeTag = isLocalModel ? chalk.gray('local · offline') : chalk.gray('cloud');
 
   // Build compact status panel
   const statusLines = [
-    `  ${chalk.bold.white('Model')}       ${modelName}`,
+    `  ${chalk.bold.white('Model')}       ${modelName}  ${modelTypeTag}`,
     `  ${chalk.bold.white('Mode')}        ${modeName}`,
     `  ${chalk.bold.white('Google Ads')}  ${googleStatus}`,
     `  ${chalk.bold.white('Meta Ads')}    ${metaStatus}`,
@@ -515,13 +536,38 @@ async function main() {
       }
 
       if (action === 'audit') {
-        let auditPrompt = 'Perform a comprehensive campaign audit of my Google Ads account.';
-        if (config.metaToken && !config.connectGoogle) {
-          auditPrompt = 'Perform a comprehensive campaign audit of my Meta Ads account.';
+        let auditPrompt = '';
+        if (!config.metaToken && !config.connectGoogle) {
+          // No platforms connected — ask user what to audit
+          console.log('');
+          console.log(chalk.yellow('  ⚠️  No ad platforms connected.'));
+          console.log(chalk.gray('  Connect Google Ads or Meta Ads via `openads setup` for live data.'));
+          console.log(chalk.gray('  You can still ask questions about your campaigns by pasting data into the chat.\n'));
+          auditPrompt = 'Audit my ad campaigns. No platforms are connected, so ask me to paste my campaign data.';
         } else if (config.metaToken && config.connectGoogle) {
-          auditPrompt = 'Perform a comprehensive multi-platform campaign audit of my connected ad accounts.';
+          // Both connected — let user choose
+          const { auditPlatform } = await enquirer.prompt<{ auditPlatform: string }>({
+            type: 'select',
+            name: 'auditPlatform',
+            message: chalk.bold('Which platform would you like to audit?'),
+            choices: [
+              { name: 'both',   message: `${chalk.cyan('🔍')}  Both platforms (Google Ads + Meta Ads)` },
+              { name: 'google', message: `${chalk.cyan('📊')}  Google Ads only` },
+              { name: 'meta',   message: `${chalk.cyan('📱')}  Meta Ads only` },
+              { name: 'back',   message: chalk.gray('← Back') },
+            ]
+          });
+          if (auditPlatform === 'back') continue;
+          if (auditPlatform === 'google') auditPrompt = 'Audit my Google Ads campaigns. Focus on keyword quality, budget waste, bid strategy, and RSA performance.';
+          else if (auditPlatform === 'meta') auditPrompt = 'Audit my Meta Ads campaigns. Focus on creative fatigue, ABO vs CBO, ROAS trends, and audience overlap.';
+          else auditPrompt = 'Audit all my connected ad accounts — Google Ads and Meta Ads.';
+        } else if (config.connectGoogle) {
+          auditPrompt = 'Audit my Google Ads campaigns. Focus on keyword quality, budget waste, bid strategy, and RSA performance.';
+        } else {
+          auditPrompt = 'Audit my Meta Ads campaigns. Focus on creative fatigue, ABO vs CBO, ROAS trends, and audience overlap.';
         }
         finalArgs = [auditPrompt];
+        selectedAction = 'audit';
       } else if (action === 'autoresearch') {
         let inArMenu = true;
         let arAction = '';
@@ -792,19 +838,21 @@ async function main() {
           if (csvPath) triggerMsg += ` Read the prior data CSV at ${csvPath} first, extract patterns, then generate new hypotheses.`;
           else triggerMsg += ` No prior data — generate hypotheses from scratch using product context.`;
         } else {
+          // Concise triggers — the skill file has all the detailed instructions.
+          // Short message = more output tokens for the model's response.
           const arTriggerMap: Record<string, string> = {
-            'ar-plan':     'Help me plan a marketing experiment with Autoresearch.',
-            'ar-improve':  'Research my ICP and find growth opportunities with Autoresearch.',
-            'ar-learn':    'Analyze my competitors and market positioning with Autoresearch.',
-            'ar-predict':  'Assemble 5 marketing expert personas to evaluate my hypothesis with Autoresearch.',
-            'ar-probe':    'Have 8 marketing personas stress-test my campaign brief with Autoresearch.',
-            'ar-reason':   'Run an adversarial debate on this marketing strategy decision with Autoresearch.',
-            'ar-scenario': 'Generate what-if scenarios for my marketing plan with Autoresearch.',
-            'ar-evals':    'Analyze my past marketing experiment results with Autoresearch.',
-            'ar-debug':    'Debug why my marketing campaign is underperforming with Autoresearch.',
-            'ar-fix':      'Fix these known marketing asset issues one-by-one with Autoresearch.',
-            'ar-security': 'Run a brand safety and compliance audit on my marketing assets with Autoresearch.',
-            'ar-ship':     'Prepare my winning marketing assets for deployment with Autoresearch.',
+            'ar-plan':     'Plan a marketing experiment. Walk me through Goal → Metric → Scope → Prior Data.',
+            'ar-improve':  'Research my ICP and identify growth opportunities.',
+            'ar-learn':    'Analyze my competitors and extract messaging gaps.',
+            'ar-predict':  'Have 5 expert marketing personas evaluate my idea and give a go/no-go verdict.',
+            'ar-probe':    'Stress-test my campaign brief with 8 personas.',
+            'ar-reason':   'Run an adversarial debate on my key strategy decision.',
+            'ar-scenario': 'Generate what-if scenarios for my marketing plan.',
+            'ar-evals':    'Analyze my past experiment results and recommend the next test.',
+            'ar-debug':    'Debug why my campaign is underperforming. Find the root cause.',
+            'ar-fix':      'Fix my marketing asset issues one by one.',
+            'ar-security': 'Run a brand safety and compliance audit on my marketing assets.',
+            'ar-ship':     'Prepare my winning assets for deployment.',
           };
           triggerMsg = arTriggerMap[arAction] || '';
         }
@@ -873,6 +921,14 @@ async function main() {
     ...process.env,
     NODE_NO_WARNINGS: '1',
   };
+
+  // Signal to the MCP extension whether to skip tool registration.
+  // During autoresearch, MCP tools are never needed and waste ~2K tokens.
+  if (selectedAction === 'autoresearch') {
+    env.OPENADS_SKIP_MCP = '1';
+  } else {
+    delete env.OPENADS_SKIP_MCP;
+  }
 
   if (config.apiKey && config.apiKey !== 'dummy-key') {
     const envVarName = getApiKeyEnvVar(cleanProvider);

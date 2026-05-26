@@ -92,6 +92,50 @@ export async function runDoctor() {
     hasErrors = true;
   }
 
+  // ─── Local AI Check ────────────────────────────────────────────────
+  if (config?.localBaseUrl) {
+    console.log(`\n${chalk.bold('Local AI')}`);
+    const baseUrl = config.localBaseUrl.replace(/\/$/, '');
+
+    // 1. Check if the endpoint is reachable
+    try {
+      const tagsUrl = `${baseUrl.replace('/v1', '')}/api/tags`;
+      const res = await fetch(tagsUrl, { signal: AbortSignal.timeout(3000) });
+
+      if (res.ok) {
+        const data: any = await res.json();
+        const models: string[] = (data.models || []).map((m: any) => m.name || m.model || '');
+        console.log(`  ${chalk.green('✓')} Ollama server: Reachable at ${baseUrl}`);
+
+        // 2. Check if the configured model is pulled
+        const configuredModel = config.provider.includes('/')
+          ? config.provider.split('/').pop()
+          : config.provider;
+
+        const modelFound = models.some(m =>
+          m === configuredModel || m.startsWith(configuredModel.split(':')[0])
+        );
+
+        if (modelFound) {
+          console.log(`  ${chalk.green('✓')} Model: ${chalk.cyan(configuredModel)} is available`);
+        } else {
+          console.log(`  ${chalk.red('✗')} Model: ${chalk.cyan(configuredModel)} not found in Ollama`);
+          console.log(`     ${chalk.gray('Available models:')} ${models.length > 0 ? models.join(', ') : 'none'}`);
+          console.log(`     ${chalk.gray(`Run: ollama pull ${configuredModel}`)}`);
+          hasErrors = true;
+        }
+      } else {
+        console.log(`  ${chalk.red('✗')} Ollama server: Not reachable at ${baseUrl}`);
+        console.log(`     ${chalk.gray('Start Ollama with: ollama serve')}`);
+        hasErrors = true;
+      }
+    } catch (e: any) {
+      console.log(`  ${chalk.red('✗')} Ollama server: Connection failed — ${e.message}`);
+      console.log(`     ${chalk.gray('Make sure Ollama is running: ollama serve')}`);
+      hasErrors = true;
+    }
+  }
+
   if (hasErrors) {
     console.log(`\n${chalk.red('Some checks failed. Please run `openads setup` to configure your environment.')}`);
     process.exit(1);
@@ -99,3 +143,4 @@ export async function runDoctor() {
     console.log(`\n${chalk.green('All checks passed! You are ready to run OpenAds.')}`);
   }
 }
+

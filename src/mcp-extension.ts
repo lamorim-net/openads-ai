@@ -38,6 +38,13 @@ export default async function(pi: ExtensionAPI) {
     return;
   }
 
+  // Skip MCP tool registration during Autoresearch.
+  // The model never needs live ad platform tools when generating hypotheses,
+  // and each tool schema consumes ~150 tokens of scarce context.
+  if (process.env.OPENADS_SKIP_MCP === '1') {
+    return;
+  }
+
   const clients: { name: string; client: Client }[] = [];
 
   // ─── Google Ads MCP ───────────────────────────────────────────────
