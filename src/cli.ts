@@ -110,10 +110,33 @@ function getModelLabel(config: any): string {
 // ─── System Prompt ──────────────────────────────────────────────────
 // Makes the agent behave as "OpenAds" instead of generic Pi.
 // Two modes: 'default' (full prompt for chat/audit) and 'autoresearch' (lean prompt for AR loops).
+// Three tiers: 'express' (7-13B local), 'standard' (70B/Flash/Mini), 'full' (frontier).
 
 type PromptMode = 'default' | 'autoresearch';
+type ModelTier = 'express' | 'standard' | 'full';
 
-function buildSystemPrompt(config: any, mode: PromptMode = 'default', arContext?: { arAction?: string; triggerMsg?: string }): string {
+function getTierBadge(tier: ModelTier): string {
+  switch (tier) {
+    case 'express':  return chalk.yellow('⚡ Express');
+    case 'standard': return chalk.blue('📊 Standard');
+    case 'full':     return chalk.magenta('🚀 Full');
+  }
+}
+
+function getTierFromConfig(config: any): ModelTier {
+  if (config.tier) return config.tier;
+  // Fallback auto-detect for configs without tier
+  if (config.localBaseUrl) {
+    const model = (config.provider || '').toLowerCase();
+    if (model.includes('70b') || model.includes('72b') || model.includes('405b')) return 'standard';
+    return 'express';
+  }
+  const p = (config.provider || '').toLowerCase();
+  if (p.includes('flash') || p.includes('mini') || p.includes('haiku')) return 'standard';
+  return 'full';
+}
+
+function buildSystemPrompt(config: any, mode: PromptMode = 'default', tier: ModelTier = 'standard', arContext?: { arAction?: string; triggerMsg?: string }): string {
   const contextPath = path.join(CONFIG_DIR, 'context', 'my-business.md');
   const isLaunchMode = config.mode === 'launch';
   const homeDir = os.homedir();
@@ -178,6 +201,31 @@ function buildSystemPrompt(config: any, mode: PromptMode = 'default', arContext?
   }
 
   // ─────────────────────────────────────────────────────────────────
+  // EXPRESS MODE — Ultra-compact prompt (~150 words)
+  // For 7-13B local models. Every single word counts.
+  // ─────────────────────────────────────────────────────────────────
+  if (tier === 'express') {
+    const exParts = [
+      'You are OpenAds, an AI marketing assistant. Speak in plain marketing language.',
+      '',
+      '## Rules',
+      '- Read the skill file loaded in your context. Follow its output format exactly.',
+      '- Be concise: use bullet points and tables, not long paragraphs.',
+      '- Flag issues as: 🔴 Critical, 🟡 Warning, 🟢 Opportunity.',
+      '- End every response with numbered action items.',
+      `- Home directory: ${homeDir}. Use literal paths, never placeholders.`,
+      isLaunchMode
+        ? '- Mode: Launch. Show preview + get Y/N before any write operation.'
+        : '- Mode: Audit. Read-only — you can analyze but not modify campaigns.',
+    ];
+    if (config?.productContext) {
+      exParts.push(`\nBusiness: ${config.productContext}`);
+    }
+    exParts.push(`\nContext file: ${contextPath}. Read it first.`);
+    return exParts.join('\n');
+  }
+
+  // ─────────────────────────────────────────────────────────────────
   // DEFAULT MODE — Full prompt for chat, audit, copywriting, GTM
   // Role trigger catalogs and AR philosophy removed — the CLI handles
   // routing and skill files contain the detailed instructions.
@@ -231,6 +279,19 @@ function buildSystemPrompt(config: any, mode: PromptMode = 'default', arContext?
 
   parts.push(...businessContext);
   parts.push(...memory);
+
+  // Full tier gets additional frontier-only instructions
+  if (tier === 'full') {
+    parts.push(
+      '',
+      '## Advanced Analysis (Full Mode)',
+      '- When auditing, cross-reference metrics across platforms if both are connected.',
+      '- For copywriting, generate 5+ variants with distinct emotional registers and A/B testing rationale.',
+      '- For Autoresearch, run 5 autonomous cycles and score against prior data patterns.',
+      '- Proactively suggest follow-up actions the user hasn\'t asked for.',
+      '- Use rich markdown formatting: tables, headers, bold/italic emphasis, and structured sections.',
+    );
+  }
 
   return parts.join('\n');
 }
@@ -333,8 +394,27 @@ function showSkills(): void {
 // Instead of loading all 24 skill files (~11K tokens), load only the ones
 // relevant to the selected action. Critical for small local models.
 
-function getRelevantSkills(action: string, arAction: string, skillsDir: string): string[] {
+function getRelevantSkills(action: string, arAction: string, skillsDir: string, tier: ModelTier = 'standard'): string[] {
   const pmSkill = path.join(skillsDir, 'product-marketing.md');
+  const expressDir = path.join(skillsDir, 'express');
+
+  // ── Express tier → always load from express/ directory ──────────
+  if (tier === 'express') {
+    const epSkill = path.join(expressDir, 'product.md');
+    if (arAction) {
+      return [path.join(expressDir, 'autoresearch.md'), epSkill];
+    }
+    const expressMap: Record<string, string[]> = {
+      'audit':        [path.join(expressDir, 'audit.md'), epSkill],
+      'copy':         [path.join(expressDir, 'copywriting.md'), epSkill],
+      'gtm':          [path.join(expressDir, 'strategy.md'), epSkill],
+      'autoresearch': [path.join(expressDir, 'autoresearch.md'), epSkill],
+      'chat':         [epSkill],
+    };
+    return expressMap[action] || [epSkill];
+  }
+
+  // ── Standard & Full → existing selective loading ────────────────
 
   // Map ar actions to their specific skill files
   const arSkillMap: Record<string, string[]> = {
@@ -447,11 +527,13 @@ async function main() {
   const metaStatus = config.metaToken ? chalk.green('● Connected') : chalk.gray('○ Not connected');
 
   const modeName = config.mode === 'launch' ? chalk.red.bold('Launch Mode (Read-Write)') : chalk.green.bold('Audit Mode (Safe / Read-only)');
-  const modelTypeTag = isLocalModel ? chalk.gray('local · offline') : chalk.gray('cloud');
+  const tier: ModelTier = getTierFromConfig(config);
+  const tierBadge = getTierBadge(tier);
+  const modelTypeTag = isLocalModel ? chalk.gray('local') : chalk.gray('cloud');
 
   // Build compact status panel
   const statusLines = [
-    `  ${chalk.bold.white('Model')}       ${modelName}  ${modelTypeTag}`,
+    `  ${chalk.bold.white('Model')}       ${modelName}  ${tierBadge} ${chalk.gray('·')} ${modelTypeTag}`,
     `  ${chalk.bold.white('Mode')}        ${modeName}`,
     `  ${chalk.bold.white('Google Ads')}  ${googleStatus}`,
     `  ${chalk.bold.white('Meta Ads')}    ${metaStatus}`,
@@ -480,22 +562,47 @@ async function main() {
         })
       );
 
+      // ─── Tier-Aware Main Menu ─────────────────────────────────────
+      const menuChoices = tier === 'express'
+        ? [
+            { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
+            { name: 'audit',        message: `${chalk.cyan('🔍')}  Quick audit — scan my campaigns` },
+            { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy — headlines & descriptions` },
+            { name: 'autoresearch', message: `${chalk.cyan('🎯')}  Generate ideas — marketing hypotheses` },
+            { name: 'gtm',          message: `${chalk.cyan('📈')}  GTM brief — 1-page go-to-market plan` },
+            { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
+            { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
+          ]
+        : tier === 'standard'
+        ? [
+            { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
+            { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns` },
+            { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform` },
+            { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas ${chalk.gray('(autoresearch)')}` },
+            { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan` },
+            { name: 'schedule',     message: `${chalk.cyan('⏰')}  Schedule automations` },
+            { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
+            { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
+            { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
+          ]
+        : [
+            { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
+            { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns ${chalk.gray('(deep analysis)')}` },
+            { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform ${chalk.gray('(5+ variants)')}` },
+            { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas automatically ${chalk.gray('(autoresearch)')}` },
+            { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan ${chalk.gray('(comprehensive)')}` },
+            { name: 'skills',       message: `${chalk.cyan('📚')}  Browse available skills` },
+            { name: 'schedule',     message: `${chalk.cyan('⏰')}  Schedule automations` },
+            { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
+            { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
+            { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
+          ];
+
       const { action } = await enquirer.prompt<{ action: string }>({
         type: 'select',
         name: 'action',
         message: chalk.bold('What would you like to do?'),
-        choices: [
-          { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
-          { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns ${chalk.gray('(audit)')}` },
-          { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform ${chalk.gray('(copywriting)')}` },
-          { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas automatically ${chalk.gray('(autoresearch)')}` },
-          { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan ${chalk.gray('(strategy)')}` },
-          { name: 'skills',       message: `${chalk.cyan('📚')}  Browse available skills` },
-          { name: 'schedule',     message: `${chalk.cyan('⏰')}  Schedule automations` },
-          { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
-          { name: 'doctor',       message: `${chalk.gray('🩺')}  Diagnostics` },
-          { name: 'exit',         message: `${chalk.gray('❌')}  Exit` }
-        ]
+        choices: menuChoices,
       });
 
       if (action === 'exit') {
@@ -503,8 +610,59 @@ async function main() {
         return;
       }
       if (action === 'setup') {
-        await runSetup();
-        return;
+        // ─── Settings Sub-Menu ────────────────────────────────
+        const currentTierLabel = getTierBadge(tier);
+        const currentModeLabel = config.mode === 'launch' ? 'Launch' : 'Audit';
+        const { settingsAction } = await enquirer.prompt<{ settingsAction: string }>({
+          type: 'select',
+          name: 'settingsAction',
+          message: chalk.bold('Settings'),
+          choices: [
+            { name: 'tier',  message: `${chalk.yellow('⚡')} Change experience tier ${chalk.gray(`(currently: ${tier})`)}` },
+            { name: 'mode',  message: `${chalk.cyan('🔄')} Change operational mode ${chalk.gray(`(currently: ${currentModeLabel})`)}` },
+            { name: 'full',  message: `${chalk.gray('⚙️')}  Run full setup wizard` },
+            { name: 'back',  message: chalk.gray('← Back') },
+          ]
+        });
+
+        if (settingsAction === 'full') {
+          await runSetup();
+          return;
+        }
+        if (settingsAction === 'tier') {
+          const { newTier } = await enquirer.prompt<{ newTier: string }>({
+            type: 'select',
+            name: 'newTier',
+            message: 'Select experience tier:',
+            choices: [
+              { name: 'express',  message: `${chalk.yellow('⚡')} Express  — Fast & reliable  (Llama 8B, Mistral 7B)` },
+              { name: 'standard', message: `${chalk.blue('📊')} Standard — Balanced depth    (Gemini Flash, GPT-4o Mini)` },
+              { name: 'full',     message: `${chalk.magenta('🚀')} Full     — Maximum depth    (GPT-4o, Claude, Gemini Pro)` },
+            ],
+            initial: ['express', 'standard', 'full'].indexOf(tier)
+          });
+          config.tier = newTier;
+          fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+          console.log(chalk.green(`\n✓ Tier changed to ${getTierBadge(newTier as ModelTier)}.\n`));
+          continue;
+        }
+        if (settingsAction === 'mode') {
+          const { newMode } = await enquirer.prompt<{ newMode: string }>({
+            type: 'select',
+            name: 'newMode',
+            message: 'Select operational mode:',
+            choices: [
+              { name: 'audit',  message: `${chalk.green('🔒')} Audit Mode (Safe / Read-only)` },
+              { name: 'launch', message: `${chalk.red('🔓')} Launch Mode (Read-Write)` },
+            ],
+            initial: config.mode === 'launch' ? 1 : 0
+          });
+          config.mode = newMode;
+          fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+          console.log(chalk.green(`\n✓ Mode changed to ${newMode === 'launch' ? 'Launch' : 'Audit'}.\n`));
+          continue;
+        }
+        continue;
       }
       if (action === 'doctor') {
         await runDoctor();
@@ -537,34 +695,49 @@ async function main() {
 
       if (action === 'audit') {
         let auditPrompt = '';
-        if (!config.metaToken && !config.connectGoogle) {
-          // No platforms connected — ask user what to audit
-          console.log('');
-          console.log(chalk.yellow('  ⚠️  No ad platforms connected.'));
-          console.log(chalk.gray('  Connect Google Ads or Meta Ads via `openads setup` for live data.'));
-          console.log(chalk.gray('  You can still ask questions about your campaigns by pasting data into the chat.\n'));
-          auditPrompt = 'Audit my ad campaigns. No platforms are connected, so ask me to paste my campaign data.';
-        } else if (config.metaToken && config.connectGoogle) {
-          // Both connected — let user choose
-          const { auditPlatform } = await enquirer.prompt<{ auditPlatform: string }>({
-            type: 'select',
-            name: 'auditPlatform',
-            message: chalk.bold('Which platform would you like to audit?'),
-            choices: [
-              { name: 'both',   message: `${chalk.cyan('🔍')}  Both platforms (Google Ads + Meta Ads)` },
-              { name: 'google', message: `${chalk.cyan('📊')}  Google Ads only` },
-              { name: 'meta',   message: `${chalk.cyan('📱')}  Meta Ads only` },
-              { name: 'back',   message: chalk.gray('← Back') },
-            ]
-          });
-          if (auditPlatform === 'back') continue;
-          if (auditPlatform === 'google') auditPrompt = 'Audit my Google Ads campaigns. Focus on keyword quality, budget waste, bid strategy, and RSA performance.';
-          else if (auditPlatform === 'meta') auditPrompt = 'Audit my Meta Ads campaigns. Focus on creative fatigue, ABO vs CBO, ROAS trends, and audience overlap.';
-          else auditPrompt = 'Audit all my connected ad accounts — Google Ads and Meta Ads.';
-        } else if (config.connectGoogle) {
-          auditPrompt = 'Audit my Google Ads campaigns. Focus on keyword quality, budget waste, bid strategy, and RSA performance.';
+        // Express tier: skip platform sub-menu entirely — just go
+        if (tier === 'express') {
+          if (!config.metaToken && !config.connectGoogle) {
+            console.log('');
+            console.log(chalk.yellow('  ⚠️  No ad platforms connected.'));
+            console.log(chalk.gray('  Paste your campaign data in the chat, or run `openads setup` to connect.\n'));
+            auditPrompt = 'Quick audit. No platforms connected — ask me to paste campaign data, then flag issues as 🔴🟡🟢 and give 3 action items.';
+          } else if (config.connectGoogle && config.metaToken) {
+            auditPrompt = 'Quick audit of all my connected ad campaigns. Flag issues as 🔴 Critical, 🟡 Warning, 🟢 Opportunity. Give me the top 3 actions.';
+          } else if (config.connectGoogle) {
+            auditPrompt = 'Quick audit of my Google Ads campaigns. Flag issues as 🔴🟡🟢 and give 3 actions.';
+          } else {
+            auditPrompt = 'Quick audit of my Meta Ads campaigns. Flag issues as 🔴🟡🟢 and give 3 actions.';
+          }
+        // Standard/Full: platform selection sub-menu
         } else {
-          auditPrompt = 'Audit my Meta Ads campaigns. Focus on creative fatigue, ABO vs CBO, ROAS trends, and audience overlap.';
+          if (!config.metaToken && !config.connectGoogle) {
+            console.log('');
+            console.log(chalk.yellow('  ⚠️  No ad platforms connected.'));
+            console.log(chalk.gray('  Connect Google Ads or Meta Ads via `openads setup` for live data.'));
+            console.log(chalk.gray('  You can still ask questions about your campaigns by pasting data into the chat.\n'));
+            auditPrompt = 'Audit my ad campaigns. No platforms are connected, so ask me to paste my campaign data.';
+          } else if (config.metaToken && config.connectGoogle) {
+            const { auditPlatform } = await enquirer.prompt<{ auditPlatform: string }>({
+              type: 'select',
+              name: 'auditPlatform',
+              message: chalk.bold('Which platform would you like to audit?'),
+              choices: [
+                { name: 'both',   message: `${chalk.cyan('🔍')}  Both platforms (Google Ads + Meta Ads)` },
+                { name: 'google', message: `${chalk.cyan('📊')}  Google Ads only` },
+                { name: 'meta',   message: `${chalk.cyan('📱')}  Meta Ads only` },
+                { name: 'back',   message: chalk.gray('← Back') },
+              ]
+            });
+            if (auditPlatform === 'back') continue;
+            if (auditPlatform === 'google') auditPrompt = 'Audit my Google Ads campaigns. Focus on keyword quality, budget waste, bid strategy, and RSA performance.';
+            else if (auditPlatform === 'meta') auditPrompt = 'Audit my Meta Ads campaigns. Focus on creative fatigue, ABO vs CBO, ROAS trends, and audience overlap.';
+            else auditPrompt = 'Audit all my connected ad accounts — Google Ads and Meta Ads.';
+          } else if (config.connectGoogle) {
+            auditPrompt = 'Audit my Google Ads campaigns. Focus on keyword quality, budget waste, bid strategy, and RSA performance.';
+          } else {
+            auditPrompt = 'Audit my Meta Ads campaigns. Focus on creative fatigue, ABO vs CBO, ROAS trends, and audience overlap.';
+          }
         }
         finalArgs = [auditPrompt];
         selectedAction = 'audit';
@@ -587,115 +760,168 @@ async function main() {
             })
           );
 
-          const { arPhase } = await enquirer.prompt<{ arPhase: string }>({
-            type: 'select',
-            name: 'arPhase',
-            message: chalk.bold('🔬 Autoresearch — Select a Phase:'),
-            choices: [
-              { name: 'discover', message: `${chalk.yellow('📋 Discover')}  - Plan experiments, research ICP, & competitive intel` },
-              { name: 'generate', message: `${chalk.green('🎯 Generate')}  - Launch the core autonomous loop to test ideas` },
-              { name: 'validate', message: `${chalk.blue('🔮 Validate')}  - Expert predictions, stress-tests, & debates` },
-              { name: 'analyze',  message: `${chalk.magenta('📊 Analyze')}   - Inspect past performance & debug drops` },
-              { name: 'fix',      message: `${chalk.red('🔨 Fix')}       - Fix issues & run brand safety audits` },
-              { name: 'ship',     message: `${chalk.cyan('🚀 Ship')}      - Format final assets & build deployment briefs` },
-              { name: 'back',     message: `${chalk.gray('← Back to main menu')}` },
-            ]
-          });
+          // ── Express tier: flat, simple menu ─────────────────────
+          if (tier === 'express') {
+            const { opt } = await enquirer.prompt<{ opt: string }>({
+              type: 'select',
+              name: 'opt',
+              message: chalk.bold('🔬 Autoresearch — What do you want to do?'),
+              choices: [
+                { name: 'ar-core',  message: `${chalk.green('🎯')} Generate new ideas      — Run the core hypothesis loop` },
+                { name: 'ar-plan',  message: `${chalk.cyan('📋')} Plan my experiment      — Figure out what to test & how` },
+                { name: 'ar-debug', message: `${chalk.yellow('🐛')} Debug underperformance  — Diagnose drops & issues` },
+                { name: 'ar-fix',   message: `${chalk.red('🔨')} Fix issues              — Character limits, pixel breaks` },
+                { name: 'back',     message: `${chalk.gray('← Back to main menu')}` },
+              ]
+            });
+            if (opt === 'back') break;
+            arAction = opt;
+            inArMenu = false;
 
-          if (arPhase === 'back') {
-            break;
-          }
+          // ── Standard tier: 5 phases, 8 commands ─────────────────
+          } else if (tier === 'standard') {
+            const { arPhase } = await enquirer.prompt<{ arPhase: string }>({
+              type: 'select',
+              name: 'arPhase',
+              message: chalk.bold('🔬 Autoresearch — Select a Phase:'),
+              choices: [
+                { name: 'discover', message: `${chalk.yellow('📋 Discover')}  — Plan experiments & research` },
+                { name: 'generate', message: `${chalk.green('🎯 Generate')}  — Core autonomous hypothesis loop` },
+                { name: 'analyze',  message: `${chalk.magenta('📊 Analyze')}   — Inspect past performance` },
+                { name: 'fix',      message: `${chalk.red('🔨 Fix')}       — Fix issues & compliance` },
+                { name: 'ship',     message: `${chalk.cyan('🚀 Ship')}      — Format assets for deployment` },
+                { name: 'back',     message: `${chalk.gray('← Back to main menu')}` },
+              ]
+            });
 
-          if (arPhase === 'discover') {
-            const res = await enquirer.prompt<{ opt: string }>({
-              type: 'select',
-              name: 'opt',
-              message: chalk.bold('📋 Discover Options:'),
-              choices: [
-                { name: 'ar-plan',    message: `${chalk.cyan('📋')} Plan my experiment       - Figure out what to test & how to measure` },
-                { name: 'ar-improve', message: `${chalk.cyan('🧠')} Research ICP & growth    - Find growth opportunities from ICP & market` },
-                { name: 'ar-learn',   message: `${chalk.cyan('💡')} Learn from the market    - Competitive intel on pages & copy` },
-                { name: 'back',       message: `${chalk.gray('← Back to phases')}` },
-              ]
-            });
-            if (res.opt !== 'back') {
-              arAction = res.opt;
-              inArMenu = false;
+            if (arPhase === 'back') break;
+
+            if (arPhase === 'discover') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('📋 Discover:'),
+                choices: [
+                  { name: 'ar-plan',    message: `${chalk.cyan('📋')} Plan my experiment       — What to test & how to measure` },
+                  { name: 'ar-improve', message: `${chalk.cyan('🧠')} Research ICP & growth    — Growth opportunities from ICP & market` },
+                  { name: 'ar-learn',   message: `${chalk.cyan('💡')} Learn from the market    — Competitive intel on pages & copy` },
+                  { name: 'back',       message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
+            } else if (arPhase === 'generate') {
+              arAction = 'ar-core'; inArMenu = false;
+            } else if (arPhase === 'analyze') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('📊 Analyze:'),
+                choices: [
+                  { name: 'ar-evals', message: `${chalk.cyan('📊')} Analyze past results    — Find trends & plateaus` },
+                  { name: 'ar-debug', message: `${chalk.cyan('🐛')} Debug underperformance  — Root cause diagnostic` },
+                  { name: 'back',     message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
+            } else if (arPhase === 'fix') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('🔨 Fix:'),
+                choices: [
+                  { name: 'ar-fix',      message: `${chalk.cyan('🔨')} Fix issues one-by-one   — Character limits, pixel breaks` },
+                  { name: 'ar-security', message: `${chalk.cyan('🛡️')} Brand safety audit      — Reg (FTC/GDPR), trademark` },
+                  { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
+            } else if (arPhase === 'ship') {
+              arAction = 'ar-ship'; inArMenu = false;
             }
-          } else if (arPhase === 'generate') {
-            const res = await enquirer.prompt<{ opt: string }>({
+
+          // ── Full tier: all 6 phases, all 12 commands ────────────
+          } else {
+            const { arPhase } = await enquirer.prompt<{ arPhase: string }>({
               type: 'select',
-              name: 'opt',
-              message: chalk.bold('🎯 Generate Options:'),
+              name: 'arPhase',
+              message: chalk.bold('🔬 Autoresearch — Select a Phase:'),
               choices: [
-                { name: 'ar-core',    message: `${chalk.cyan('🎯')} Generate new hypotheses  - Run core loop to generate & score ideas` },
-                { name: 'back',       message: `${chalk.gray('← Back to phases')}` },
+                { name: 'discover', message: `${chalk.yellow('📋 Discover')}  — Plan experiments, research ICP, & competitive intel` },
+                { name: 'generate', message: `${chalk.green('🎯 Generate')}  — Launch the core autonomous loop to test ideas` },
+                { name: 'validate', message: `${chalk.blue('🔮 Validate')}  — Expert predictions, stress-tests, & debates` },
+                { name: 'analyze',  message: `${chalk.magenta('📊 Analyze')}   — Inspect past performance & debug drops` },
+                { name: 'fix',      message: `${chalk.red('🔨 Fix')}       — Fix issues & run brand safety audits` },
+                { name: 'ship',     message: `${chalk.cyan('🚀 Ship')}      — Format final assets & build deployment briefs` },
+                { name: 'back',     message: `${chalk.gray('← Back to main menu')}` },
               ]
             });
-            if (res.opt !== 'back') {
-              arAction = res.opt;
-              inArMenu = false;
-            }
-          } else if (arPhase === 'validate') {
-            const res = await enquirer.prompt<{ opt: string }>({
-              type: 'select',
-              name: 'opt',
-              message: chalk.bold('🔮 Validate Options:'),
-              choices: [
-                { name: 'ar-predict',  message: `${chalk.cyan('🔮')} Get expert predictions - 5 expert personas debate your idea` },
-                { name: 'ar-probe',    message: `${chalk.cyan('🔍')} Stress-test my brief   - 8 personas stress-test your strategy` },
-                { name: 'ar-reason',   message: `${chalk.cyan('⚖️')}  Debate a strategy call - Adversarial debate on key binary calls` },
-                { name: 'ar-scenario', message: `${chalk.cyan('🎭')} Run what-if scenarios   - Stress-test plans against disruptions` },
-                { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
-              ]
-            });
-            if (res.opt !== 'back') {
-              arAction = res.opt;
-              inArMenu = false;
-            }
-          } else if (arPhase === 'analyze') {
-            const res = await enquirer.prompt<{ opt: string }>({
-              type: 'select',
-              name: 'opt',
-              message: chalk.bold('📊 Analyze Options:'),
-              choices: [
-                { name: 'ar-evals',    message: `${chalk.cyan('📊')} Analyze past results    - Find trends & plateaus in experiment data` },
-                { name: 'ar-debug',    message: `${chalk.cyan('🐛')} Debug underperformance  - Root cause diagnostic for drops` },
-                { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
-              ]
-            });
-            if (res.opt !== 'back') {
-              arAction = res.opt;
-              inArMenu = false;
-            }
-          } else if (arPhase === 'fix') {
-            const res = await enquirer.prompt<{ opt: string }>({
-              type: 'select',
-              name: 'opt',
-              message: chalk.bold('🔨 Fix Options:'),
-              choices: [
-                { name: 'ar-fix',      message: `${chalk.cyan('🔨')} Fix issues one-by-one   - Crush character limits, pixel breaks` },
-                { name: 'ar-security', message: `${chalk.cyan('🛡️')} Brand safety audit      - Reg (FTC/GDPR), trademark compliance` },
-                { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
-              ]
-            });
-            if (res.opt !== 'back') {
-              arAction = res.opt;
-              inArMenu = false;
-            }
-          } else if (arPhase === 'ship') {
-            const res = await enquirer.prompt<{ opt: string }>({
-              type: 'select',
-              name: 'opt',
-              message: chalk.bold('🚀 Ship Options:'),
-              choices: [
-                { name: 'ar-ship',     message: `${chalk.cyan('🚀')} Prepare assets to ship  - Format for platforms & build deployment brief` },
-                { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
-              ]
-            });
-            if (res.opt !== 'back') {
-              arAction = res.opt;
-              inArMenu = false;
+
+            if (arPhase === 'back') break;
+
+            if (arPhase === 'discover') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('📋 Discover Options:'),
+                choices: [
+                  { name: 'ar-plan',    message: `${chalk.cyan('📋')} Plan my experiment       — Figure out what to test & how to measure` },
+                  { name: 'ar-improve', message: `${chalk.cyan('🧠')} Research ICP & growth    — Find growth opportunities from ICP & market` },
+                  { name: 'ar-learn',   message: `${chalk.cyan('💡')} Learn from the market    — Competitive intel on pages & copy` },
+                  { name: 'back',       message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
+            } else if (arPhase === 'generate') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('🎯 Generate Options:'),
+                choices: [
+                  { name: 'ar-core', message: `${chalk.cyan('🎯')} Generate new hypotheses  — Run core loop to generate & score ideas` },
+                  { name: 'back',    message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
+            } else if (arPhase === 'validate') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('🔮 Validate Options:'),
+                choices: [
+                  { name: 'ar-predict',  message: `${chalk.cyan('🔮')} Get expert predictions — 5 expert personas debate your idea` },
+                  { name: 'ar-probe',    message: `${chalk.cyan('🔍')} Stress-test my brief   — 8 personas stress-test your strategy` },
+                  { name: 'ar-reason',   message: `${chalk.cyan('⚖️')}  Debate a strategy call — Adversarial debate on key binary calls` },
+                  { name: 'ar-scenario', message: `${chalk.cyan('🎭')} Run what-if scenarios   — Stress-test plans against disruptions` },
+                  { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
+            } else if (arPhase === 'analyze') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('📊 Analyze Options:'),
+                choices: [
+                  { name: 'ar-evals', message: `${chalk.cyan('📊')} Analyze past results    — Find trends & plateaus in experiment data` },
+                  { name: 'ar-debug', message: `${chalk.cyan('🐛')} Debug underperformance  — Root cause diagnostic for drops` },
+                  { name: 'back',     message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
+            } else if (arPhase === 'fix') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('🔨 Fix Options:'),
+                choices: [
+                  { name: 'ar-fix',      message: `${chalk.cyan('🔨')} Fix issues one-by-one   — Crush character limits, pixel breaks` },
+                  { name: 'ar-security', message: `${chalk.cyan('🛡️')} Brand safety audit      — Reg (FTC/GDPR), trademark compliance` },
+                  { name: 'back',        message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
+            } else if (arPhase === 'ship') {
+              const res = await enquirer.prompt<{ opt: string }>({
+                type: 'select', name: 'opt',
+                message: chalk.bold('🚀 Ship Options:'),
+                choices: [
+                  { name: 'ar-ship', message: `${chalk.cyan('🚀')} Prepare assets to ship  — Format for platforms & build deployment brief` },
+                  { name: 'back',    message: `${chalk.gray('← Back to phases')}` },
+                ]
+              });
+              if (res.opt !== 'back') { arAction = res.opt; inArMenu = false; }
             }
           }
         }
@@ -860,11 +1086,23 @@ async function main() {
         finalArgs = [triggerMsg];
         selectedAction = 'autoresearch';
       } else {
-        const actionMap: Record<string, string[]> = {
-          chat:         [],
-          copy:         ['Help me generate high-performing ad copy for my campaigns.'],
-          gtm:          ['Help me build a comprehensive Go-To-Market strategy for my product.'],
+        // ── Tier-aware action prompts ────────────────────────────
+        const expressActionMap: Record<string, string[]> = {
+          chat: [],
+          copy: ['Write 5 ad headlines and 3 primary text options for my product. Follow the skill file format.'],
+          gtm:  ['Create a 1-page GTM brief for my product. Follow the skill file format.'],
         };
+        const standardActionMap: Record<string, string[]> = {
+          chat: [],
+          copy: ['Help me generate high-performing ad copy for my campaigns.'],
+          gtm:  ['Help me build a go-to-market strategy for my product.'],
+        };
+        const fullActionMap: Record<string, string[]> = {
+          chat: [],
+          copy: ['Help me generate high-performing ad copy for my campaigns. Generate 5+ variants with distinct emotional registers, A/B testing rationale, and platform-specific formatting.'],
+          gtm:  ['Help me build a comprehensive Go-To-Market strategy for my product. Include competitive positioning, channel plan with budget allocation, timeline, and success metrics.'],
+        };
+        const actionMap = tier === 'express' ? expressActionMap : tier === 'full' ? fullActionMap : standardActionMap;
         finalArgs = actionMap[action] || [];
         selectedAction = action;
       }
@@ -872,9 +1110,14 @@ async function main() {
     }
   }
 
-  // ─── Loading Spinner ────────────────────────────────────────────
+  // ─── Loading Spinner ─────────────────────────────────────────
+  const loadingMessages: Record<string, string> = {
+    express:  'Launching express agent...',
+    standard: 'Starting marketing agent...',
+    full:     'Starting full marketing intelligence agent...',
+  };
   const spinner = ora({
-    text: chalk.cyan('Starting marketing agent...'),
+    text: chalk.cyan(loadingMessages[tier] || 'Starting marketing agent...'),
     spinner: 'dots12',
     color: 'cyan',
   }).start();
@@ -900,8 +1143,8 @@ async function main() {
   // Inject product context as a skill directory
   const contextDir = injectProductContext(config);
 
-  // Load only the skills relevant to the selected action (saves ~8K tokens for local models)
-  const relevantSkills = getRelevantSkills(selectedAction, selectedArAction, skillsDir);
+  // Load only the skills relevant to the selected action and tier
+  const relevantSkills = getRelevantSkills(selectedAction, selectedArAction, skillsDir, tier);
   const skillArgs: string[] = [];
   for (const skill of relevantSkills) {
     skillArgs.push('--skill', skill);
@@ -923,12 +1166,13 @@ async function main() {
   };
 
   // Signal to the MCP extension whether to skip tool registration.
-  // During autoresearch, MCP tools are never needed and waste ~2K tokens.
-  if (selectedAction === 'autoresearch') {
+  // Express tier and autoresearch skip MCP entirely.
+  if (selectedAction === 'autoresearch' || tier === 'express') {
     env.OPENADS_SKIP_MCP = '1';
   } else {
     delete env.OPENADS_SKIP_MCP;
   }
+  env.OPENADS_TIER = tier;
 
   if (config.apiKey && config.apiKey !== 'dummy-key') {
     const envVarName = getApiKeyEnvVar(cleanProvider);
@@ -953,9 +1197,9 @@ async function main() {
 
   settings.quietStartup = true;
 
-  // System prompt — mode-aware: lean for autoresearch, full for everything else
+  // System prompt — mode-aware and tier-aware
   const promptMode: PromptMode = (selectedAction === 'autoresearch') ? 'autoresearch' : 'default';
-  const systemPrompt = buildSystemPrompt(config, promptMode, { arAction: selectedArAction });
+  const systemPrompt = buildSystemPrompt(config, promptMode, tier, { arAction: selectedArAction });
   settings.systemPrompt = systemPrompt;
   fs.writeFileSync(systemPromptPath, systemPrompt);
 

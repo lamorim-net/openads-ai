@@ -6,22 +6,29 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
-// ─── Essential Campaign Analysis & Audit Tools ──────────────────────
-// Filtering down from 39 tools to 11 essential campaign performance tools
-// massively optimizes local LLM context, prevents tool confusion, and breaks repeating loops.
-const ESSENTIAL_META_TOOLS = new Set([
+// ─── Tier-Based Tool Filtering ──────────────────────────────────────
+// Express → skip MCP entirely (handled by OPENADS_SKIP_MCP env var)
+// Standard → 6 read-only discovery + performance tools
+// Full → 11 tools (read + write operations)
+
+const STANDARD_META_TOOLS = new Set([
   "get_ad_accounts",
   "list_campaigns",
   "get_campaign",
   "get_campaign_performance",
   "get_insights",
-  "list_ad_sets",
+  "list_ad_sets"
+]);
+
+const FULL_META_TOOLS = new Set([
+  ...STANDARD_META_TOOLS,
   "list_ads",
   "get_creative_performance",
   "pause_campaign",
   "resume_campaign",
   "update_campaign"
 ]);
+
 
 export default async function(pi: ExtensionAPI) {
   const configDir = path.join(os.homedir(), '.openads');
@@ -102,12 +109,15 @@ export default async function(pi: ExtensionAPI) {
   }
 
   // ─── Dynamically Register Tools ──────────────────────────────────
+  const tier = process.env.OPENADS_TIER || 'standard';
+  const allowedMetaTools = tier === 'full' ? FULL_META_TOOLS : STANDARD_META_TOOLS;
+
   for (const { name: serverName, client } of clients) {
     try {
       const toolsResult = await client.listTools();
       for (const tool of toolsResult.tools) {
-        // Filter out advanced/OAuth/developer tools for Meta Ads to keep the LLM context extremely clean
-        if (serverName === "meta-ads" && !ESSENTIAL_META_TOOLS.has(tool.name)) {
+        // Filter Meta tools by tier (standard=6 read-only, full=11 read+write)
+        if (serverName === "meta-ads" && !allowedMetaTools.has(tool.name)) {
           continue;
         }
 

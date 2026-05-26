@@ -39,7 +39,7 @@ export async function runSetup() {
   }
 
   // Step 1: Model Selection
-  console.log(chalk.cyan('Step 1/4: Choose your AI model\n'));
+  console.log(chalk.cyan('Step 1/6: Choose your AI model\n'));
   
   const providerChoices = [
     { name: 'google', message: 'Google (Gemini)' },
@@ -219,8 +219,51 @@ export async function runSetup() {
 
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
-  // Step 2: Choose operational mode
-  console.log(chalk.cyan('Step 2/5: Choose operational mode\n'));
+  // Step 2: Experience Tier
+  console.log(chalk.cyan('Step 2/6: Choose your experience tier\n'));
+  console.log('  OpenAds adapts its depth based on your model\'s capability:\n');
+  console.log(`  ${chalk.yellow('⚡ Express')}   — Fast & reliable. Compact prompts, structured output.`);
+  console.log(`  ${chalk.blue('📊 Standard')}  — Balanced depth. Live data tools, detailed reports.`);
+  console.log(`  ${chalk.magenta('🚀 Full')}      — Maximum depth. Multi-step analysis, creative exploration.\n`);
+
+  // Auto-detect recommended tier based on model choice
+  const isLocalSetup = provider === 'local';
+  const modelLower = (selectedModel || localModelName || customModel || '').toLowerCase();
+  let suggestedTier: 'express' | 'standard' | 'full' = 'full';
+  if (isLocalSetup) {
+    suggestedTier = (modelLower.includes('70b') || modelLower.includes('72b') || modelLower.includes('405b')) ? 'standard' : 'express';
+  } else {
+    const isLiteTier = modelLower.includes('flash') || modelLower.includes('mini') || modelLower.includes('haiku');
+    suggestedTier = isLiteTier ? 'standard' : 'full';
+  }
+
+  const tierChoices = [
+    { name: 'express',  message: `${chalk.yellow('⚡')} Express  — Best for: Llama 8B, Mistral 7B, Phi-3  ${suggestedTier === 'express' ? chalk.green('← Recommended') : ''}` },
+    { name: 'standard', message: `${chalk.blue('📊')} Standard — Best for: Gemini Flash, GPT-4o Mini, Llama 70B  ${suggestedTier === 'standard' ? chalk.green('← Recommended') : ''}` },
+    { name: 'full',     message: `${chalk.magenta('🚀')} Full     — Best for: GPT-4o, Claude Sonnet, Gemini Pro  ${suggestedTier === 'full' ? chalk.green('← Recommended') : ''}` },
+  ];
+
+  let initialTierIndex = tierChoices.findIndex(c => c.name === (existingConfig.tier || suggestedTier));
+  if (initialTierIndex === -1) initialTierIndex = tierChoices.findIndex(c => c.name === suggestedTier);
+
+  const { selectedTier } = await enquirer.prompt<{ selectedTier: 'express' | 'standard' | 'full' }>({
+    type: 'select',
+    name: 'selectedTier',
+    message: 'Select your experience tier:',
+    choices: tierChoices,
+    initial: initialTierIndex
+  } as any);
+
+  const tierLabels: Record<string, string> = {
+    express: `${chalk.yellow('⚡ Express')}`,
+    standard: `${chalk.blue('📊 Standard')}`,
+    full: `${chalk.magenta('🚀 Full')}`,
+  };
+  console.log(chalk.green(`\n✓ Experience tier: ${tierLabels[selectedTier]}.\n`));
+  console.log(chalk.gray('─────────────────────────────────────────\n'));
+
+  // Step 3: Choose operational mode
+  console.log(chalk.cyan('Step 3/6: Choose operational mode\n'));
   console.log('OpenAds has two operational modes:');
   console.log(` - ${chalk.green.bold('Audit Mode (Safe / Read-only)')}: AI can analyze performance, find budget waste, and recommend strategies. Zero risk.`);
   console.log(` - ${chalk.red.bold('Launch Mode (Read-Write)')}: AI is authorized to optimize bids, modify budgets, and launch ads (always requires confirmation).\n`);
@@ -240,8 +283,8 @@ export async function runSetup() {
   console.log(chalk.green(`\n✓ Operational mode configured: ${mode === 'launch' ? 'Launch Mode (Read-Write)' : 'Audit Mode (Safe / Read-only)'}.\n`));
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
-  // Step 3: Google Ads
-  console.log(chalk.cyan('Step 3/5: Connect Google Ads (optional)\n'));
+  // Step 4: Google Ads
+  console.log(chalk.cyan('Step 4/6: Connect Google Ads (optional)\n'));
   console.log('OpenAds can read and analyze your Google Ads campaigns, keywords, and performance.\n');
 
   const { connectGoogle } = await enquirer.prompt<{ connectGoogle: boolean }>({
@@ -284,7 +327,7 @@ export async function runSetup() {
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
   // Step 4: Meta Ads
-  console.log(chalk.cyan('Step 4/5: Connect Meta Ads (optional)\n'));
+  console.log(chalk.cyan('Step 5/6: Connect Meta Ads (optional)\n'));
   console.log('OpenAds can read your Meta campaigns, creatives, and audience performance.\n');
 
   let metaToken = '';
@@ -396,8 +439,8 @@ export async function runSetup() {
   }
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
-  // Step 5: Business Context
-  console.log(chalk.cyan('Step 5/5: Tell me about your business\n'));
+  // Step 6: Business Context
+  console.log(chalk.cyan('Step 6/6: Tell me about your business\n'));
 
   const { productContext } = await enquirer.prompt<{ productContext: string }>({
     type: 'input',
@@ -422,6 +465,7 @@ export async function runSetup() {
     provider: finalModel,
     apiKey,
     localBaseUrl,
+    tier: selectedTier,
     mode,
     connectGoogle,
     metaToken,

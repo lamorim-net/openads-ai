@@ -36,7 +36,49 @@ OpenAds is an **open-source CLI tool** that turns any AI model into a marketing 
 | 🔌 **Direct platform access** | Connect your Google Ads, Google Analytics (GA4), and Meta accounts. The AI reads your live data — no more copy-pasting reports. |
 | 🤖 **Bring your own model** | Use Google Gemini, OpenAI, Claude, or a local model running on your machine. Your choice. |
 | 🛡️ **Nothing goes live without you** | The AI can read freely, but every write operation (campaign change, budget edit) requires your explicit approval. |
-| ⚡ **Autonomous loops** | Let the AI research competitors, test ad variants, and generate hypotheses overnight. Review in the morning. |
+| ⚡ **Three experience tiers** | Express for local models, Standard for mid-tier, Full for frontier — the same beautiful UI adapts its depth to your model's capability. |
+
+---
+
+## ⚡ Three Experience Tiers — One Beautiful Interface
+
+OpenAds automatically adapts its entire experience based on your AI model's capability. Same menus, same polish, fundamentally different depth.
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  ⚡ Express          📊 Standard          🚀 Full         │
+│  Llama 8B            Gemini Flash          GPT-4o          │
+│  Mistral 7B          GPT-4o Mini           Claude Sonnet   │
+│  Phi-3               Llama 70B             Gemini Pro      │
+├────────────────────────────────────────────────────────────┤
+│  System prompt:      System prompt:        System prompt:  │
+│  ~150 words          ~300 words            ~500 words      │
+│                                                            │
+│  Skills: compact     Skills: full          Skills: full    │
+│  (~100 words each)   (~400 words each)     + advanced      │
+│                                                            │
+│  MCP tools: none     MCP tools: 6          MCP tools: 11   │
+│  (context-based)     (read-only)           (read + write)  │
+│                                                            │
+│  Menu: 7 items       Menu: 9 items         Menu: 10 items  │
+│  AR: 4 commands      AR: 8 commands        AR: 12 commands │
+│                                                            │
+│  Output: bullets     Output: tables        Output: deep    │
+│  & quick tables      & structured          analysis with   │
+│                      reports               cross-platform  │
+└────────────────────────────────────────────────────────────┘
+```
+
+### Why tiers matter
+
+A marketing manager running **Llama 3.1 8B** locally shouldn't get a *worse* experience — they should get a *different but equally polished* experience. Express mode delivers:
+
+- **Fewer menu items** → less decision fatigue
+- **Compact skill files** → the model follows instructions reliably
+- **No MCP tool chains** → no multi-step failures
+- **Structured output templates** → consistent, useful results every time
+
+When you're ready for more depth, just run `openads` → Settings → Change experience tier.
 
 ---
 
@@ -78,8 +120,10 @@ Paste this command into your Terminal and press **Enter**:
 ```bash
 openads setup
 ```
-This launches a beautiful, step-by-step interactive setup wizard where you can:
-* **Select your favorite AI model** (Google Gemini, OpenAI, Claude, or a free local model)
+This launches a 6-step interactive setup wizard where you can:
+* **Select your AI model** (Google Gemini, OpenAI, Claude, or a free local model)
+* **Choose your experience tier** (Express ⚡, Standard 📊, or Full 🚀 — auto-recommended based on your model)
+* **Set your operational mode** (Audit for read-only safety, or Launch for active campaign changes)
 * **Link your ad accounts** (Google Ads, GA4, and/or Meta Ads)
 * **Describe your business** (so the AI writes copy tailored exactly to your brand)
 
@@ -99,6 +143,24 @@ If you're already familiar with node packages, just run:
 ```bash
 npm install -g openads-ai
 openads setup
+openads
+```
+
+### 🏠 Want to run 100% locally and offline?
+
+```bash
+# 1. Install Ollama (free, open-source)
+brew install ollama     # Mac
+# or: curl -fsSL https://ollama.com/install.sh | sh  # Linux
+
+# 2. Pull a model
+ollama pull llama3.1
+
+# 3. Install OpenAds and pick "Local AI" + "Express" in setup
+npm install -g openads-ai
+openads setup
+
+# 4. Run — no internet required
 openads
 ```
 
@@ -139,6 +201,22 @@ Here are some real examples — just type what you need:
 | You type | What happens |
 |---|---|
 | `Write a 5-email welcome sequence for new signups` | Creates a full drip sequence: delivery → value → story → objection handling → soft pitch. |
+
+---
+
+## 🔬 Autoresearch — Autonomous Marketing Loops
+
+Autoresearch is OpenAds' marquee feature: an autonomous loop that generates, scores, and iterates on marketing hypotheses without you lifting a finger.
+
+The menu adapts to your tier:
+
+| Tier | Available Commands | What you get |
+|---|---|---|
+| ⚡ Express | Generate, Plan, Debug, Fix | 4 commands, flat menu, 2 loop cycles |
+| 📊 Standard | + Discover, Analyze, Ship | 8 commands, 5 phases, 3 loop cycles |
+| 🚀 Full | + Validate (Predict, Probe, Reason, Scenario) | 12 commands, 6 phases, 5 loop cycles |
+
+**Full tier exclusive**: The Validate phase includes multi-persona debates (5 expert personas evaluate your idea), stress-tests (8 personas attack your brief), and adversarial reasoning on key strategy calls.
 
 ---
 
@@ -197,7 +275,19 @@ To align with our **Radical Simplicity & Safety by Default** principles, OpenAds
 * **Audit Mode (Safe / Read-only — Recommended)**: Strict read-only guidelines. The AI can pull live campaign statistics, analyze keywords, find budget waste, and recommend landing page optimizations, but is entirely blocked from making active changes.
 * **Launch Mode (Read-Write)**: Active campaign changes. Authorizes write modifications (e.g. pausing campaigns, scaling bids, altering budgets, or testing ad creative) but strictly mandates a clear visual preview card and an explicit **confirmation prompt (Y/N)** before executing.
 
-Configure your default mode anytime by running `openads setup`.
+Configure your default mode anytime by running `openads` → Settings → Change operational mode.
+
+---
+
+## 🩺 Diagnostics
+
+Run the built-in diagnostics to check your setup:
+
+```bash
+openads doctor
+```
+
+This verifies your config file, API keys, platform connections (live token checks), required tools like `uvx`, and **local AI readiness** (checks if Ollama is running and your model is available).
 
 ---
 
@@ -210,32 +300,31 @@ Configure your default mode anytime by running `openads setup`.
 
 ---
 
-## 🩺 Troubleshooting
-
-Run the built-in diagnostics to check your setup:
-
-```bash
-openads doctor
-```
-
-This verifies your config file, API keys, platform connections (live token checks), and required tools like `uvx`.
-
----
-
 ## 🗺️ Roadmap
 
+### Shipped ✅
 - [x] Google Ads & GA4 integration via MCP
 - [x] Meta Ads integration via MCP
 - [x] Interactive setup wizard with live token verification
-- [x] 12 pre-built skills: Ads, CRO, Copywriting, Analytics, Email, Video, Research, Strategy
-- [x] Autonomous research loops
+- [x] 24 pre-built marketing skills across 7 categories
+- [x] 12 autonomous research loop commands (Autoresearch)
 - [x] Published to npm (`npm install -g openads-ai`)
 - [x] Memory system — AI learns about your business over time
 - [x] Scheduled automations — daily health checks, budget alerts, weekly reports
-- [ ] Telegram bot gateway — talk to your ads from your phone
+- [x] **Three experience tiers** — Express ⚡ / Standard 📊 / Full 🚀
+- [x] Express skill variants — compact 100-word skill files optimized for local models
+- [x] Tier-aware menus, prompts, tool chains, and output depth
+- [x] Local AI diagnostics — Ollama reachability, model availability checks
+- [x] Settings quick-switch — change tier and mode without re-running setup
+
+### Coming Next 🔜
+- [ ] Telegram/WhatsApp bot gateway — talk to your ads from your phone
 - [ ] LinkedIn Ads integration
-- [ ] TikTok Ads integration (leveraging their new [TikTok Ads MCP Server](https://digiday.com/media/tiktok-world-ads-mcp-server/))
-- [ ] Pinterest Ads integration (leveraging lessons/patterns from their [MCP Ecosystem](https://medium.com/pinterest-engineering/building-an-mcp-ecosystem-at-pinterest-c3b6b1b9e0f6))
+- [ ] TikTok Ads integration (leveraging their [TikTok Ads MCP Server](https://digiday.com/media/tiktok-world-ads-mcp-server/))
+- [ ] Pinterest Ads integration (leveraging [MCP Ecosystem](https://medium.com/pinterest-engineering/building-an-mcp-ecosystem-at-pinterest-c3b6b1b9e0f6))
+- [ ] Visual report dashboards in the terminal
+- [ ] Headless `--print` mode for CI/CD pipelines
+- [ ] Community-contributed skill packs
 
 ---
 
@@ -252,6 +341,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 1. **Radical Simplicity** — Non-technical marketers must feel at home. No forcing users to learn code, prompt engineering, or API error messages.
 2. **Marketers First** — We design around marketing workflows (audits, copy, analysis), not software concepts.
 3. **Safety by Default** — AI should never spend money or publish campaigns without human approval.
+4. **Model Parity** — A $0 local model should deliver a polished experience, not a broken one. Express mode exists to make this real.
 
 ---
 
