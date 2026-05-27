@@ -39,7 +39,7 @@ export async function runSetup() {
   }
 
   // Step 1: Model Selection
-  console.log(chalk.cyan('Step 1/6: Choose your AI model\n'));
+  console.log(chalk.cyan('Step 1/7: Choose your AI model\n'));
   
   const providerChoices = [
     { name: 'google', message: 'Google (Gemini)' },
@@ -220,7 +220,7 @@ export async function runSetup() {
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
   // Step 2: Experience Tier
-  console.log(chalk.cyan('Step 2/6: Choose your experience tier\n'));
+  console.log(chalk.cyan('Step 2/7: Choose your experience tier\n'));
   console.log('  OpenAds adapts its depth based on your model\'s capability:\n');
   console.log(`  ${chalk.yellow('⚡ Express')}   — Fast & reliable. Compact prompts, structured output.`);
   console.log(`  ${chalk.blue('📊 Standard')}  — Balanced depth. Live data tools, detailed reports.`);
@@ -263,7 +263,7 @@ export async function runSetup() {
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
   // Step 3: Choose operational mode
-  console.log(chalk.cyan('Step 3/6: Choose operational mode\n'));
+  console.log(chalk.cyan('Step 3/7: Choose operational mode\n'));
   console.log('OpenAds has two operational modes:');
   console.log(` - ${chalk.green.bold('Audit Mode (Safe / Read-only)')}: AI can analyze performance, find budget waste, and recommend strategies. Zero risk.`);
   console.log(` - ${chalk.red.bold('Launch Mode (Read-Write)')}: AI is authorized to optimize bids, modify budgets, and launch ads (always requires confirmation).\n`);
@@ -284,7 +284,7 @@ export async function runSetup() {
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
   // Step 4: Google Ads
-  console.log(chalk.cyan('Step 4/6: Connect Google Ads (optional)\n'));
+  console.log(chalk.cyan('Step 4/7: Connect Google Ads (optional)\n'));
   console.log('OpenAds can read and analyze your Google Ads campaigns, keywords, and performance.\n');
 
   const { connectGoogle } = await enquirer.prompt<{ connectGoogle: boolean }>({
@@ -327,7 +327,7 @@ export async function runSetup() {
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
   // Step 4: Meta Ads
-  console.log(chalk.cyan('Step 5/6: Connect Meta Ads (optional)\n'));
+  console.log(chalk.cyan('Step 5/7: Connect Meta Ads (optional)\n'));
   console.log('OpenAds can read your Meta campaigns, creatives, and audience performance.\n');
 
   let metaToken = '';
@@ -440,7 +440,94 @@ export async function runSetup() {
   console.log(chalk.gray('─────────────────────────────────────────\n'));
 
   // Step 6: Business Context
-  console.log(chalk.cyan('Step 6/6: Tell me about your business\n'));
+  // Step 6/7: Facebook Page for organic posting
+  console.log(chalk.cyan('Step 6/7: Connect Facebook Page for organic posts (optional)\n'));
+  console.log('OpenAds can draft and publish organic posts to your Facebook Page.\n');
+
+  let facebookPageToken = existingConfig.facebookPageToken || '';
+  let facebookPageId = existingConfig.facebookPageId || '';
+
+  const { connectFacebookPage } = await enquirer.prompt<{ connectFacebookPage: boolean }>({
+    type: 'confirm',
+    name: 'connectFacebookPage',
+    message: 'Connect a Facebook Page for organic posting?',
+    initial: existingConfig.facebookPageToken ? true : false
+  });
+
+  if (connectFacebookPage) {
+    const { fbAction } = await enquirer.prompt<{ fbAction: string }>({
+      type: 'select',
+      name: 'fbAction',
+      message: 'How would you like to proceed?',
+      choices: [
+        { name: 'guide', message: 'Open Graph API Explorer (get a Page Access Token)' },
+        { name: 'skip', message: 'Skip (I already have my token and Page ID)' }
+      ]
+    });
+
+    if (fbAction === 'guide') {
+      await open('https://developers.facebook.com/tools/explorer/');
+      console.log(chalk.cyan('\nInstructions to get a Facebook Page Access Token:'));
+      console.log(chalk.gray('1. In Graph API Explorer, select your App.'));
+      console.log(chalk.gray('2. Click Generate Access Token and grant pages_manage_posts + pages_read_engagement.'));
+      console.log(chalk.gray('3. Run GET /me/accounts — find your Page and copy its access_token and id.\n'));
+    }
+
+    let fbVerified = false;
+    while (!fbVerified) {
+      const fbAnswers = await enquirer.prompt<{ facebookPageToken: string; facebookPageId: string }>([
+        {
+          type: 'password',
+          name: 'facebookPageToken',
+          message: 'Paste your Facebook Page Access Token:',
+          initial: existingConfig.facebookPageToken || '',
+          validate: (v: string) => v.trim() ? true : 'Token cannot be empty.'
+        },
+        {
+          type: 'input',
+          name: 'facebookPageId',
+          message: 'Paste your Facebook Page ID (numeric):',
+          initial: existingConfig.facebookPageId || '',
+          validate: (v: string) => v.trim() ? true : 'Page ID cannot be empty.'
+        }
+      ]);
+      facebookPageToken = fbAnswers.facebookPageToken;
+      facebookPageId = fbAnswers.facebookPageId;
+
+      console.log(chalk.cyan('Verifying Facebook Page token...'));
+      try {
+        const res = await fetch(`https://graph.facebook.com/v21.0/${facebookPageId}?fields=name,fan_count&access_token=${facebookPageToken}`);
+        const data: any = await res.json();
+        if (res.ok && data.name) {
+          console.log(chalk.green(`\n✓ Connected to Facebook Page: "${data.name}" (${(data.fan_count || 0).toLocaleString()} followers)\n`));
+          fbVerified = true;
+        } else {
+          console.log(chalk.red(`\n🛑 Verification failed: ${data.error?.message || 'Invalid token or page ID'}\n`));
+          const { retryAction } = await enquirer.prompt<{ retryAction: string }>({
+            type: 'select', name: 'retryAction', message: 'How would you like to handle this?',
+            choices: [
+              { name: 'retry', message: 'Try again' },
+              { name: 'keep', message: 'Keep anyway' },
+              { name: 'skip', message: 'Skip Facebook Page connection' }
+            ]
+          });
+          if (retryAction === 'keep') fbVerified = true;
+          else if (retryAction === 'skip') { facebookPageToken = ''; facebookPageId = ''; break; }
+        }
+      } catch (e: any) {
+        console.log(chalk.red(`\n🛑 Network error: ${e.message}\n`));
+        facebookPageToken = ''; facebookPageId = '';
+        break;
+      }
+    }
+    if (facebookPageToken) {
+      console.log(chalk.green('✓ Facebook organic posting module enabled.\n'));
+    } else {
+      console.log(chalk.yellow('✓ Facebook Page connection skipped.\n'));
+    }
+  }
+  console.log(chalk.gray('─────────────────────────────────────────\n'));
+  console.log(chalk.cyan('Step 7/7: Tell me about your business\n'));
 
   const { productContext } = await enquirer.prompt<{ productContext: string }>({
     type: 'input',
@@ -470,6 +557,8 @@ export async function runSetup() {
     connectGoogle,
     metaToken,
     productContext
+  facebookPageToken,
+  facebookPageId,
   };
 
   fs.writeFileSync(
