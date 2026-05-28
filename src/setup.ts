@@ -556,9 +556,9 @@ export async function runSetup() {
     mode,
     connectGoogle,
     metaToken,
-    productContext
-  facebookPageToken,
-  facebookPageId,
+    productContext,
+    facebookPageToken,
+    facebookPageId,
   };
 
   fs.writeFileSync(

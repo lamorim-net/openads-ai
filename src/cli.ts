@@ -406,10 +406,11 @@ function getRelevantSkills(action: string, arAction: string, skillsDir: string, 
     }
     const expressMap: Record<string, string[]> = {
       'audit':        [path.join(expressDir, 'audit.md'), epSkill],
-      'copy':         [path.join(expressDir, 'copywriting.md'), epSkill],
+      'copy':         [path.join(expressDir, 'copywriting.md'), path.join(expressDir, 'organic-social.md'), epSkill],
+      'organic':      [path.join(expressDir, 'organic-social.md'), epSkill],
       'gtm':          [path.join(expressDir, 'strategy.md'), epSkill],
       'autoresearch': [path.join(expressDir, 'autoresearch.md'), epSkill],
-      'chat':         [epSkill],
+      'chat':         [path.join(expressDir, 'organic-social.md'), epSkill],
     };
     return expressMap[action] || [epSkill];
   }
@@ -447,10 +448,21 @@ function getRelevantSkills(action: string, arAction: string, skillsDir: string, 
     ];
   }
 
-  // Copy → load copywriting + product context
+  // Copy → load copywriting + organic social + facebook organic + product context
   if (action === 'copy') {
     return [
       path.join(skillsDir, 'content', 'copywriting.md'),
+      path.join(skillsDir, 'organic', 'organic-social.md'),
+      path.join(skillsDir, 'organic', 'facebook-page.md'),
+      pmSkill,
+    ];
+  }
+
+  // Organic → load organic social + facebook organic + product context
+  if (action === 'organic') {
+    return [
+      path.join(skillsDir, 'organic', 'organic-social.md'),
+      path.join(skillsDir, 'organic', 'facebook-page.md'),
       pmSkill,
     ];
   }
@@ -568,6 +580,7 @@ async function main() {
             { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
             { name: 'audit',        message: `${chalk.cyan('🔍')}  Quick audit — scan my campaigns` },
             { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy — headlines & descriptions` },
+            { name: 'organic',      message: `${chalk.cyan('📱')}  Organic posts — Instagram, LinkedIn, FB` },
             { name: 'autoresearch', message: `${chalk.cyan('🎯')}  Generate ideas — marketing hypotheses` },
             { name: 'gtm',          message: `${chalk.cyan('📈')}  GTM brief — 1-page go-to-market plan` },
             { name: 'setup',        message: `${chalk.gray('⚙️')}   Settings` },
@@ -578,6 +591,7 @@ async function main() {
             { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
             { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns` },
             { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform` },
+            { name: 'organic',      message: `${chalk.cyan('📱')}  Organic social content` },
             { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas ${chalk.gray('(autoresearch)')}` },
             { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan` },
             { name: 'schedule',     message: `${chalk.cyan('⏰')}  Schedule automations` },
@@ -589,6 +603,7 @@ async function main() {
             { name: 'chat',         message: `${chalk.cyan('💬')}  Ask anything` },
             { name: 'audit',        message: `${chalk.cyan('🔍')}  Audit my ad campaigns ${chalk.gray('(deep analysis)')}` },
             { name: 'copy',         message: `${chalk.cyan('✍️')}   Write ad copy for any platform ${chalk.gray('(5+ variants)')}` },
+            { name: 'organic',      message: `${chalk.cyan('📱')}  Organic social posting ${chalk.gray('(Facebook integration)')}` },
             { name: 'autoresearch', message: `${chalk.cyan('🔄')}  Test and improve ideas automatically ${chalk.gray('(autoresearch)')}` },
             { name: 'gtm',          message: `${chalk.cyan('📈')}  Build a go-to-market plan ${chalk.gray('(comprehensive)')}` },
             { name: 'skills',       message: `${chalk.cyan('📚')}  Browse available skills` },
@@ -1090,16 +1105,19 @@ async function main() {
         const expressActionMap: Record<string, string[]> = {
           chat: [],
           copy: ['Write 5 ad headlines and 3 primary text options for my product. Follow the skill file format.'],
+          organic: ['Write an organic social post for my product. Follow the organic-social-express skill format.'],
           gtm:  ['Create a 1-page GTM brief for my product. Follow the skill file format.'],
         };
         const standardActionMap: Record<string, string[]> = {
           chat: [],
           copy: ['Help me generate high-performing ad copy for my campaigns.'],
+          organic: ['Help me draft high-performing organic social content for Instagram, LinkedIn, TikTok, or Facebook.'],
           gtm:  ['Help me build a go-to-market strategy for my product.'],
         };
         const fullActionMap: Record<string, string[]> = {
           chat: [],
           copy: ['Help me generate high-performing ad copy for my campaigns. Generate 5+ variants with distinct emotional registers, A/B testing rationale, and platform-specific formatting.'],
+          organic: ['Help me plan, draft, or publish organic social content. If my Facebook Page is connected, check my recent posts first to avoid repeating topics, and format it natively for publication.'],
           gtm:  ['Help me build a comprehensive Go-To-Market strategy for my product. Include competitive positioning, channel plan with budget allocation, timeline, and success metrics.'],
         };
         const actionMap = tier === 'express' ? expressActionMap : tier === 'full' ? fullActionMap : standardActionMap;

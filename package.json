@@ -1,6 +1,6 @@
 {
   "name": "openads-ai",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Open-source AI command center for digital marketers. Audit campaigns, write ad copy, and build strategies — from your terminal.",
   "main": "dist/cli.js",
   "bin": {
