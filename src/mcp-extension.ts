@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
-// ─── Tier-Based Tool Filtering ──────────────────────────────────────
+// ─── Tier-Based Tool Filtering ────────────────────────────────────
 // Express → skip MCP entirely (handled by OPENADS_SKIP_MCP env var)
 // Standard → 6 read-only discovery + performance tools
 // Full → 11 tools (read + write operations)
@@ -28,7 +28,6 @@ const FULL_META_TOOLS = new Set([
   "resume_campaign",
   "update_campaign"
 ]);
-
 
 export default async function(pi: ExtensionAPI) {
   const configDir = path.join(os.homedir(), '.openads');
@@ -54,7 +53,7 @@ export default async function(pi: ExtensionAPI) {
 
   const clients: { name: string; client: Client }[] = [];
 
-  // ─── Google Ads MCP ───────────────────────────────────────────────
+  // ─── Google Ads MCP ────────────────────────────────────────────────────
   if (config.connectGoogle) {
     try {
       const useRtk = hasGlobalRtk();
@@ -79,7 +78,7 @@ export default async function(pi: ExtensionAPI) {
     }
   }
 
-  // ─── Meta Ads MCP (Local Stdio Server via meta-ads-mcp) ───────────
+  // ─── Meta Ads MCP (Local Stdio Server via meta-ads-mcp) ─────────────────
   if (config.metaToken) {
     try {
       const useRtk = hasGlobalRtk();
@@ -135,7 +134,7 @@ export default async function(pi: ExtensionAPI) {
                 return {
                   content: [{
                     type: "text",
-                    text: `Blocking execution of '${tool.name}' because OpenAds is in Audit Mode (Safe/Read-only). Under Audit Mode, campaign write operations are disabled. To execute active changes, please toggle to Launch Mode in Settings (\`openads setup\`).`
+                    text: `Blocking execution of '${tool.name}' because OpenAds is in Audit Mode (Safe/Read-only). Campaign write operations are disabled. Toggle to Launch Mode in Settings (openads setup) to make changes.`
                   }],
                   details: {},
                   isError: true,
@@ -182,6 +181,131 @@ export default async function(pi: ExtensionAPI) {
       }
     } catch (err: any) {
       console.error(`[OpenAds MCP] Failed to register tools for ${serverName}: ${err.message}`);
+    }
+  }
+
+  // ─── Facebook Page Organic Posting ──────────────────────────────
+  if (config.facebookPageToken && config.facebookPageId) {
+    const FB_API = 'https://graph.facebook.com/v21.0';
+    const PAGE_ID = config.facebookPageId;
+    const PAGE_TOKEN = config.facebookPageToken;
+
+    // Read: get recent page posts (Standard + Full)
+    pi.registerTool({
+      name: 'get_facebook_page_posts',
+      label: 'Get Facebook Page Posts',
+      description: 'Retrieve recent organic posts from your Facebook Page. Call this before drafting new content to review posting history and avoid repeating topics.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: 'Number of recent posts to retrieve (1-25, default 10)',
+          },
+        },
+      },
+      async execute(toolCallId, params, signal, onUpdate, ctx) {
+        const limit = Math.min((params as any).limit || 10, 25);
+        try {
+          const res = await fetch(
+            `${FB_API}/${PAGE_ID}/posts?fields=message,created_time,full_picture,permalink_url&limit=${limit}&access_token=${PAGE_TOKEN}`
+          );
+          const data = await res.json() as any;
+          if (data.error) throw new Error(data.error.message);
+          return {
+            content: [{ type: 'text', text: JSON.stringify(data.data, null, 2) }],
+            details: {},
+          };
+        } catch (err: any) {
+          return {
+            content: [{ type: 'text', text: `Error fetching posts: ${err.message}` }],
+            details: {},
+            isError: true,
+          };
+        }
+      },
+    });
+
+    // Write: publish a post (Full tier only, gated by audit/launch mode)
+    if (tier === 'full') {
+      pi.registerTool({
+        name: 'post_to_facebook_page',
+        label: 'Post to Facebook Page',
+        description: 'Publish an organic text post (with optional link) to your Facebook Page.',
+        parameters: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              description: 'The post text content',
+            },
+            link: {
+              type: 'string',
+              description: 'Optional URL to attach as a link preview',
+            },
+          },
+          required: ['message'],
+        },
+        async execute(toolCallId, params, signal, onUpdate, ctx) {
+          const p = params as any;
+
+          if (config.mode === 'audit') {
+            return {
+              content: [{
+                type: 'text',
+                text: "Blocking 'post_to_facebook_page' — OpenAds is in Audit Mode (Read-only). Switch to Launch Mode in 'openads setup' to publish.",
+              }],
+              details: {},
+              isError: true,
+            };
+          }
+
+          if (config.mode === 'launch') {
+            const preview = p.message.length > 120 ? p.message.slice(0, 120) + '...' : p.message;
+            const ok = await ctx.ui.confirm(
+              'Confirm Facebook Post ⚠️',
+              `You are about to publish to your Facebook Page:\n\n"${preview}"\n${p.link ? "\nLink: " + p.link : ""}\n\nPublish now?`
+            );
+            if (!ok) {
+              return {
+                content: [{ type: 'text', text: 'Post cancelled by user.' }],
+                details: {},
+                isError: true,
+              };
+            }
+          }
+
+          try {
+            const body: Record<string, any> = {
+              message: p.message,
+              access_token: PAGE_TOKEN,
+            };
+            if (p.link) body.link = p.link;
+
+            const res = await fetch(`${FB_API}/${PAGE_ID}/feed`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            });
+            const data = await res.json() as any;
+            if (data.error) throw new Error(data.error.message);
+
+            return {
+              content: [{
+                type: 'text',
+                text: `✅ Published!\nPost ID: ${data.id}\nURL: https://www.facebook.com/${data.id.replace("_", "/posts/")}`,
+              }],
+              details: {},
+            };
+          } catch (err: any) {
+            return {
+              content: [{ type: 'text', text: `Error publishing post: ${err.message}` }],
+              details: {},
+              isError: true,
+            };
+          }
+        },
+      });
     }
   }
 
