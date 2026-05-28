@@ -1181,6 +1181,7 @@ async function main() {
   const env: any = {
     ...process.env,
     NODE_NO_WARNINGS: '1',
+    PI_SKIP_VERSION_CHECK: '1',
   };
 
   // Signal to the MCP extension whether to skip tool registration.
