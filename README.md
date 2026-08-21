@@ -357,7 +357,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
       </td>
       <td align="center" width="50%">
         <b>🎯 Sal Ali</b><br>
-        Strategic Advisor<br><br>
+        Co-Creator<br><br>
         <a href="https://www.linkedin.com/in/salali1?utm_source=share&utm_medium=member_mweb&utm_campaign=share_via&utm_content=profile">LinkedIn</a>
       </td>
     </tr>
