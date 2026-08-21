@@ -3,7 +3,7 @@
 ```
   ██████╗ ██████╗ ███████╗███╗   ██╗ █████╗ ██████╗ ███████╗
   ██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔══██╗██╔════╝
-  ██║   ██║██████╔╝█████╗  ██╔██╗ ██║███████║██║  ██║███████╗
+  ██║   ██║██████╔╝█████╗  ██╔██╗ ██║███████║██║  ██║███████║
   ██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║██╔══██║██║  ██║╚════██║
   ╚██████╔╝██║     ███████╗██║ ╚████║██║  ██║██████╔╝███████║
    ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═════╝ ╚══════╝
@@ -24,7 +24,7 @@
 
 ## What is OpenAds?
 
-OpenAds is an **open-source CLI tool** that turns any AI model into a marketing assistant. It's built for performance marketers, media buyers, and growth leads who want to audit campaigns, write ad copy, and build strategies — all from one place.
+OpenAds is an **open-source CLI tool** that turns any AI model into a marketing assistant. It's built for performance marketers, media buyers, and growth leads who want to audit campaigns, write ad copy, and optimize performance in plain English.
 
 **No code. No prompt engineering. No spreadsheet exports.**
 
@@ -216,7 +216,7 @@ The menu adapts to your tier:
 | 📊 Standard | + Discover, Analyze, Ship | 8 commands, 5 phases, 3 loop cycles |
 | 🚀 Full | + Validate (Predict, Probe, Reason, Scenario) | 12 commands, 6 phases, 5 loop cycles |
 
-**Full tier exclusive**: The Validate phase includes multi-persona debates (5 expert personas evaluate your idea), stress-tests (8 personas attack your brief), and adversarial reasoning on key strategy calls.
+**Full tier exclusive**: The Validate phase includes multi-persona debates (5 expert personas evaluate your idea), stress-tests (8 personas attack your brief), and adversarial reasoning on key strategy assumptions.
 
 ---
 
@@ -272,8 +272,8 @@ Uses your OS scheduler (macOS `launchd` / Linux `crontab`) — works even when y
 
 To align with our **Radical Simplicity & Safety by Default** principles, OpenAds operates in two visual modes to give you total control and peace of mind over your ad accounts:
 
-* **Audit Mode (Safe / Read-only — Recommended)**: Strict read-only guidelines. The AI can pull live campaign statistics, analyze keywords, find budget waste, and recommend landing page optimizations, but is entirely blocked from making active changes.
-* **Launch Mode (Read-Write)**: Active campaign changes. Authorizes write modifications (e.g. pausing campaigns, scaling bids, altering budgets, or testing ad creative) but strictly mandates a clear visual preview card and an explicit **confirmation prompt (Y/N)** before executing.
+* **Audit Mode (Safe / Read-only — Recommended)**: Strict read-only guidelines. The AI can pull live campaign statistics, analyze keywords, find budget waste, and recommend landing page optimizations, but cannot spend money or modify campaigns.
+* **Launch Mode (Read-Write)**: Active campaign changes. Authorizes write modifications (e.g. pausing campaigns, scaling bids, altering budgets, or testing ad creative) but strictly mandates a clear confirmation before each execution.
 
 Configure your default mode anytime by running `openads` → Settings → Change operational mode.
 
@@ -345,9 +345,24 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 ---
 
-## 👥 Core Team
+## 👥 Team
 
-* **Luiz Amorim** — Creator & Maintainer ([lamorim.net](https://lamorim.net) | [LinkedIn](https://www.linkedin.com/in/luizamorim/))
+<p align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <b>🚀 Luiz Amorim</b><br>
+        Creator & Maintainer<br><br>
+        <a href="https://www.linkedin.com/in/luizamorim">LinkedIn</a> • <a href="https://lamorim.net">Website</a>
+      </td>
+      <td align="center" width="50%">
+        <b>🎯 Sal Ali</b><br>
+        Strategic Advisor<br><br>
+        <a href="https://www.linkedin.com/in/salali1?utm_source=share&utm_medium=member_mweb&utm_campaign=share_via&utm_content=profile">LinkedIn</a>
+      </td>
+    </tr>
+  </table>
+</p>
 
 ---
 
@@ -355,4 +370,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
 
 MIT.
 
-*Built on [Pi](https://github.com/earendil-works/pi) (MIT). Includes tools derived from [adloop](https://github.com/kLOsk/adloop) (MIT) by kLOsk. Marketing skills inspired by [marketingskills](https://github.com/coreyhaines31/marketingskills) (MIT) by Corey Haines. Memory and background automation concepts inspired by [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research. Token optimization proxy concepts inspired by [RTK](https://github.com/rtk-ai/rtk) by rtk-ai.*
+*Built on [Pi](https://github.com/earendil-works/pi) (MIT). Includes tools derived from [adloop](https://github.com/kLOsk/adloop) (MIT) by kLOsk. Marketing skills inspired by [marketingskills](https://github.com/marketingskills-ai) (MIT).*
